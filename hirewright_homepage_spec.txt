@@ -1,0 +1,413 @@
+# HIREWRIGHT — HOMEPAGE COPY & STRUCTURE SPEC
+
+This document contains the full homepage copy, section structure, and design notes for the Hirewright employer-facing website (main domain). The candidate-facing site lives on a separate subdomain and is not covered here.
+
+---
+
+## BRAND BASICS
+
+**Company name:** Hirewright
+**Tagline (short, for footer):** Skilled industrial work, delivered properly.
+**Established:** 2001
+**Primary market:** German industrial companies
+**Audience:** HR managers, plant managers, operations directors, procurement
+**Languages:** English (EN) + German (DE) , make the buttons for both options, but only focus on English for now
+**Tone:** Restrained, factual, German B2B register. No marketing fluff. Numbers do the work. Short declarative sentences.
+
+---
+
+## COLOR PALETTE
+
+- **Navy** `#0A2540` — primary, ~70% of usage
+- **Near-Black** `#0D0D0D` — body text, anchor
+- **Off-White** `#FAFAFA` — background
+- **Signal Amber** `#F59E0B` — functional accent only (CTAs, highlights, link hovers), keep under 5% of any layout
+
+---
+
+## TYPOGRAPHY
+
+- **Display / Headlines:** DIN Next Bold (preferred) or Oswald Bold (free fallback)
+- **Body / UI:** Inter (Regular 400, Medium 500, Semibold 600)
+- All caps reserved for industrial signage moments (wordmark, labels, small section headers)
+- Letter-spacing: tight on display, normal on body, wide (3-4) on small-caps labels
+
+---
+
+## PAGE STRUCTURE — 13 SECTIONS
+
+---
+
+### SECTION 1 — HEADER (sticky)
+
+- Logo (primary lockup), top-left
+- Navigation: Industries · Experience · How we work · About · Contact
+- Language switcher: EN / DE (top-right)
+- Primary CTA button: "Get in touch"
+
+---
+
+### SECTION 2 — HERO
+
+**Headline:**
+Industrial staffing across Central and Western Europe.
+
+**Subheadline:**
+1,500+ skilled workers placed since 2001. Recruitment across Hungary, Romania, Poland, and Slovakia. Full operational support included.
+
+**CTAs:**
+- Primary button: "Get in touch"
+- Secondary text link: "See our work"
+
+**Layout notes:**
+- Generous whitespace, hero takes 80-90vh
+- Headline in large display weight (60-80px desktop)
+- Subheadline in body size (18-22px), max-width ~700px
+- CTAs left-aligned below subheadline
+- No hero image or video — let typography do the work. Optional: a subtle, restrained background element (thin geometric line, small monogram watermark in low opacity)
+
+---
+
+### SECTION 3 — CREDIBILITY STRIP
+
+**Copy:**
+Trusted on projects with:
+
+**BMW Group · Mercedes-Benz · NATO · Bremerhaven Shipyard · DPD**
+
+**Layout notes:**
+- Sits directly below hero, no other section in between
+- Text-only treatment (logos require permission — see legal notes at bottom)
+- Centered or left-aligned, single horizontal row
+- Use a horizontal rule above and below for visual separation
+- Names in medium weight, navy color
+
+---
+
+### SECTION 4 — WHAT WE DO (services + starting rates)
+
+**Section header:**
+Skilled labor across six categories. Hourly rates start from:
+
+**Service cards (6 total):**
+
+1. **Skilled trades — from €29/hr**
+   Welders (including certified), electricians, HVAC technicians, fitters, machinists.
+
+2. **Industrial specialists — from €29/hr**
+   Sprinkler installation, calibration technicians, security system installers.
+
+3. **Construction & finishing — from €25/hr**
+   Painters, pipefitters, general construction.
+
+4. **Semi-skilled production — from €20/hr**
+   Assembly line workers, packagers, machine operators.
+
+5. **Logistics & warehouse — from €20/hr**
+   Warehouse workers, forklift operators, drivers.
+
+6. **Cleaning & maintenance services — from €19/hr**
+   Residential & commercial cleaning crews, specialized industrial workers.
+
+**Closing line below grid:**
+For specialized roles, certifications, or volume pricing — get in touch.
+
+**Layout notes:**
+- 3-column grid on desktop, 2-column on tablet, 1-column on mobile
+- Each card: small icon (line-style, navy), category name in display weight, price in amber, description in body
+- Cards ordered high-to-low by price (positions firm at high-skill end)
+
+---
+
+### SECTION 5 — BY THE NUMBERS
+
+Four stats in a horizontal band:
+
+- **25** — years of experience
+- **1,500+** — workers placed
+- **4** — countries in our recruitment network
+- **30+** — active partners
+
+**Layout notes:**
+- Numbers very large (96-128px), labels small below
+- Centered or evenly spaced
+- No animation/counter — restrained presentation
+- Optional: thin horizontal rules separating the four columns
+
+---
+
+### SECTION 6 — EXPERIENCE / FEATURED PROJECTS
+
+**Section header:**
+Selected projects.
+
+**Case study cards (5 total):**
+
+**BMW Group**
+- Specialists provided for sprinkler system installation projects
+- Industrial construction environment
+
+**Mercedes-Benz**
+- Production line assembly and calibration
+- Installation of security access systems
+- Welding projects
+
+**NATO** *(pending legal review — alternative phrasing: "International defense organization")*
+- Electricians and maintenance technicians provided
+- Maintenance support for military vehicles and tanks
+- Work performed under international and high-security standards
+
+**Bremerhaven Shipyard**
+- Welding specialists provided for large-scale shipbuilding projects
+- Dry dock and floating platform operations
+
+**DPD**
+- Warehouse workers provided
+- Drivers provided
+- Operational support
+
+**Layout notes:**
+- 2-column grid on desktop, 1-column on mobile
+- Each card: client name as header, project bullets as body
+- Optional: small "case study" tag, year of project if available
+- Cards have subtle border or background to separate from page
+
+---
+
+### SECTION 7 — CENTRAL EUROPEAN RECRUITMENT NETWORK
+
+**Visual:** Map of Europe with four source countries (HU, RO, PL, SK) highlighted in navy/amber. Arrows or lines extending to placement locations across Germany and Western Europe. Icons mark actual project sites (anonymized if needed).
+
+**Caption:**
+Our recruitment network spans four Central European countries. This depth lets us scale teams quickly without sacrificing quality. When one country's labor market tightens, we have three others ready.
+
+**Layout notes:**
+- Full-width section, map takes 60% of horizontal space on desktop
+- Caption sits beside the map (right side) on desktop, below on mobile
+- Map should use brand colors only — no Google Maps default styling
+- Consider: small markers with hover/tap info showing city + project type
+
+---
+
+### SECTION 8 — WHY HIREWRIGHT
+
+**Section header:**
+Why Hirewright.
+
+**Five points (each with icon):**
+
+1. **Multi-country recruitment depth**
+   When one pipeline tightens, three others continue.
+
+2. **Full operational support**
+   Housing, transport, paperwork, sick leave. Handled by us.
+
+3. **You only pay for hours worked**
+   No retainer. No minimum. No risk.
+
+4. **25 years of project experience**
+   From defense to automotive to shipbuilding.
+
+5. **Speed when you need it**
+   Rapid scale-up capability, proven on real projects.
+
+**Layout notes:**
+- 5-column grid on desktop (or 3+2), 1-column on mobile
+- Each point: line-style icon (navy, single weight, consistent set), title in display weight, supporting line in body
+- Icons must match a single icon system — no mixing styles
+
+---
+
+### SECTION 9 — HOW WE WORK
+
+**Section header:**
+How we work.
+
+**Four-step process:**
+
+**1. You tell us what you need.**
+Skills, headcount, timeline, certifications required.
+
+**2. We mobilize from our network.**
+Hungary, Romania, Poland, Slovakia. Whichever pipeline fits fastest.
+
+**3. We handle the logistics.**
+Housing, transport, paperwork, integration.
+
+**4. You manage the work. We handle everything else.**
+Sick leave, coordination, admin. All on us. You only pay for hours worked.
+
+**Layout notes:**
+- Horizontal timeline on desktop with numbered nodes connected by line
+- Vertical stack on mobile
+- Step numbers large and prominent
+- Use amber for step numbers, navy for everything else
+
+---
+
+### SECTION 10 — PRICING CALCULATOR
+
+**Section header:**
+Estimate your project.
+
+**Description line:**
+Tell us what you need. Get an indicative price range, then a precise quote within 24 hours.
+
+**Form inputs (interactive tool):**
+
+1. **Industry** (dropdown)
+   Options: Automotive · Defense · Shipbuilding · Logistics · Manufacturing · Construction · Other
+
+2. **Role(s) needed** (multi-select)
+   Options match the six service categories from Section 4
+
+3. **Headcount** (number input)
+
+4. **Skill level** (radio)
+   Options: Semi-skilled · Skilled · Certified specialist
+
+5. **Operational needs** (checkboxes)
+   Options: Housing · Transport · Paperwork · Sick leave management · Full coordination
+
+**Output:**
+- Indicative price range (e.g., "€22-28/hr per worker")
+- CTA: "Get a precise quote within 24 hours" — opens contact form pre-filled with selections
+
+**Note for v1 launch:** If the interactive calculator is too complex for initial build, replace with the static rate table from Section 4 plus a "Request a custom quote" form. Build the calculator for v1.1.
+
+---
+
+### SECTION 11 — BRAND STATEMENT
+
+**Headline:**
+The bridge between European industry and the people who build it.
+
+**Body:**
+Hirewright moves quickly because skilled work can't wait. We publish our rates because procurement shouldn't be a negotiation. And we look after the people we place. Housing, paperwork, sick leave, integration. Workers who are looked after stay, and stay good.
+
+**Layout notes:**
+- Centered or left-aligned, max-width ~750px for readability
+- Generous vertical padding (this section should breathe)
+- Consider: thin horizontal rule above and below
+- Optional: slightly different background tone (very subtle warm off-white) to mark it as a philosophical pause in the page
+
+---
+
+### SECTION 12 — FINAL CTA
+
+**Headline:**
+Need skilled workers? Let's talk.
+
+**Subheadline:**
+Speak with our expert team and get a price for your needs within 24 hours.
+
+**CTA button:** "Get in touch" — opens modal popup
+
+**Modal popup form fields:**
+- Full name (required)
+- Company (required)
+- Role(s) needed (multi-select, required)
+- Headcount (number, required)
+- Phone number (required)
+- Preferred callback time (dropdown: morning / afternoon / evening, in client's timezone)
+- Additional notes (optional textarea)
+
+**Submission behavior:** Sends to sales@hirewright.com (or CRM webhook). Confirmation message: "Thank you. We'll be in touch within 24 hours."
+
+---
+
+### SECTION 13 — FOOTER
+
+**Column 1: Brand**
+- Logo (smaller version)
+- Tagline: Skilled industrial work, delivered properly.
+
+**Column 2: Contact**
+- Address: [Budapest office address]
+- Phone: [number]
+- Email: [contact email]
+
+**Column 3: Legal**
+- Cégjegyzékszám: [Hungarian company registration number]
+- Adószám: [VAT number]
+- AÜG license: [German temporary work license number, if applicable]
+- Industry memberships: [if any]
+
+**Column 4: Navigation**
+- Industries
+- Experience
+- How we work
+- About
+- Contact
+- Careers (link to subdomain)
+
+**Bottom bar:**
+- Language switcher: EN / DE
+- Legal links: GDPR · Impressum · Privacy Policy
+- Social: LinkedIn (primary), Facebook (optional)
+- Copyright notice: © 2026 Hirewright Kft. All rights reserved.
+
+---
+
+## RESPONSIVE BREAKPOINTS
+
+- **Desktop:** 1280px+ — full layouts as described
+- **Tablet:** 768-1279px — reduce grids to 2-column, hero text scales down
+- **Mobile:** <768px — single column, sticky header reduced height, CTAs stack vertically
+
+---
+
+## DESIGN PRINCIPLES (for the developer/designer)
+
+1. **Generous whitespace.** German B2B sites breathe. Don't compress sections.
+2. **Typography over imagery.** Hero and section headers do the heavy lifting. Photography is a supporting role, not the main act.
+3. **No stock photos of handshakes, glass-walled meeting rooms, or smiling office workers.** If photography is used, it should be real industrial environments — production lines, shipyards, workshops. Black and white or muted tones, not high-saturation marketing photography.
+4. **Icons must be consistent.** Single line-style icon set, single weight, navy color. No mixing filled and outlined.
+5. **No animations on scroll unless they serve content** (e.g., the map can have subtle line animation; numbers should NOT have counter animations).
+6. **Amber is sacred.** Use only on CTAs, prices, key numbers, and the right-angle accent in the monogram. Overuse breaks the brand.
+
+---
+
+## LEGAL / PRE-LAUNCH CHECKLIST
+
+Before this site goes live, confirm:
+
+- [ ] Written permission from BMW Group to reference as past client
+- [ ] Written permission from Mercedes-Benz to reference as past client
+- [ ] Legal clearance on NATO reference — likely needs alternative phrasing (e.g., "International defense organization" or "NATO-standard installations")
+- [ ] Written permission from Bremerhaven Shipyard / specific yard operator
+- [ ] Written permission from DPD
+- [ ] Logo usage rights confirmed (if displaying logos vs. text only)
+- [ ] GDPR-compliant cookie banner implemented
+- [ ] Impressum page complete with all required German legal information (if targeting German market, this is legally required)
+- [ ] Privacy policy reviewed by counsel
+- [ ] AÜG license number displayed if you hold one (required for placing workers in Germany)
+
+---
+
+## TECH STACK SUGGESTIONS (optional)
+
+- **Framework:** Next.js (App Router) or Astro for static performance
+- **Styling:** Tailwind CSS with custom color tokens for the brand palette
+- **CMS (if needed):** Sanity, Contentful, or Payload for case study management
+- **Forms:** Native + serverless function, or Formspree/Netlify Forms for v1
+- **Analytics:** Plausible or Fathom (GDPR-friendly, no cookie banner needed for these)
+- **Map component:** Mapbox or custom SVG for the recruitment network map
+- **Hosting:** Vercel or Netlify
+- **Languages:** Use next-intl or similar for EN/DE translations
+
+---
+
+## CONTENT NOT YET WRITTEN (TODO)
+
+- About page full copy
+- Industries pages (one per sector — Automotive, Defense, Shipbuilding, Logistics, Manufacturing)
+- Impressum and Privacy Policy legal copy
+- German translations of all homepage copy (provided separately on request)
+- Email templates for contact form auto-responses
+- LinkedIn company page copy
+- Case study expanded format (if any case study card is clickable to a longer story)
+
+---
+
+END OF SPEC.
