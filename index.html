@@ -68,8 +68,8 @@
       </nav>
 
       <div class="flex items-center gap-3">
-        <!-- UK flag — locks page to English -->
-        <button onclick="setLang('en')" aria-label="English" class="text-xl leading-none">🇬🇧</button>
+        <!-- Language toggle — swaps EN ↔ DE and updates flag emoji -->
+        <button id="lang-toggle" onclick="toggleLang()" aria-label="Toggle language" class="text-xl leading-none"><span id="lang-flag">🇬🇧</span></button>
         <!-- Get in touch (desktop only) -->
         <button onclick="openModal()" class="hidden lg:block bg-navy text-off-white text-sm font-semibold px-5 py-2.5 hover:bg-amber hover:text-navy transition-colors" data-en="Get in touch" data-de="Kontaktieren">Get in touch</button>
         <!-- Hamburger (mobile only) -->
@@ -749,7 +749,7 @@
       <div>
         <p class="text-xs font-semibold tracking-caps uppercase text-white/25 mb-4" data-en="Contact" data-de="Kontakt">Contact</p>
         <div class="space-y-2 text-sm text-white/45">
-          <p>Budapest, Hungary</p>
+          <p data-en="Budapest, Hungary" data-de="Budapest, Ungarn">Budapest, Hungary</p>
           <p><a href="tel:+36000000000" class="hover:text-amber transition-colors">+36 00 000 0000</a></p>
           <p><a href="mailto:info@hirewright.com" class="hover:text-amber transition-colors">info@hirewright.com</a></p>
         </div>
@@ -758,9 +758,9 @@
       <div>
         <p class="text-xs font-semibold tracking-caps uppercase text-white/25 mb-4" data-en="Legal" data-de="Rechtliches">Legal</p>
         <div class="space-y-2 text-sm text-white/35">
-          <p>Cégjegyzékszám: [pending]</p>
-          <p>Adószám: [pending]</p>
-          <p>AÜG-Lizenz: [pending]</p>
+          <p data-en="Company reg. no.: [pending]" data-de="Handelsregisternummer: [pending]">Company reg. no.: [pending]</p>
+          <p data-en="Tax ID: [pending]" data-de="Steuernummer: [pending]">Tax ID: [pending]</p>
+          <p data-en="AÜG license: [pending]" data-de="AÜG-Lizenz: [pending]">AÜG license: [pending]</p>
         </div>
       </div>
 
@@ -783,7 +783,7 @@
       <div class="flex items-center gap-6">
         <div class="flex gap-4 text-xs text-white/25">
           <a href="#" class="hover:text-amber transition-colors" data-en="GDPR" data-de="DSGVO">GDPR</a>
-          <a href="#" class="hover:text-amber transition-colors">Impressum</a>
+          <a href="#" class="hover:text-amber transition-colors" data-en="Legal notice" data-de="Impressum">Legal notice</a>
           <a href="#" class="hover:text-amber transition-colors" data-en="Privacy Policy" data-de="Datenschutz">Privacy Policy</a>
         </div>
         <div class="flex items-center gap-0.5 text-xs font-semibold tracking-caps">
@@ -828,11 +828,11 @@
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold tracking-caps uppercase text-near-black/40 mb-2" data-en="Full name *" data-de="Name *">Full name *</label>
-          <input type="text" name="name" required class="w-full border border-near-black/12 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-navy" placeholder="Your name">
+          <input type="text" name="name" required class="w-full border border-near-black/12 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-navy" placeholder="Your name" data-en="Your name" data-de="Ihr Name">
         </div>
         <div>
           <label class="block text-xs font-semibold tracking-caps uppercase text-near-black/40 mb-2" data-en="Company *" data-de="Unternehmen *">Company *</label>
-          <input type="text" name="company" required class="w-full border border-near-black/12 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-navy" placeholder="Company name">
+          <input type="text" name="company" required class="w-full border border-near-black/12 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-navy" placeholder="Company name" data-en="Company name" data-de="Firmenname">
         </div>
       </div>
 
@@ -870,7 +870,7 @@
 
       <div>
         <label class="block text-xs font-semibold tracking-caps uppercase text-near-black/40 mb-2" data-en="Additional notes" data-de="Zusätzliche Anmerkungen">Additional notes</label>
-        <textarea name="notes" id="m-notes" rows="3" class="w-full border border-near-black/12 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-navy resize-none" placeholder="Certifications required, timeline, special requirements…"></textarea>
+        <textarea name="notes" id="m-notes" rows="3" class="w-full border border-near-black/12 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:border-navy resize-none" placeholder="Certifications required, timeline, special requirements…" data-en="Certifications required, timeline, special requirements…" data-de="Erforderliche Zertifizierungen, Zeitplan, besondere Anforderungen…"></textarea>
       </div>
 
       <button type="submit" class="w-full bg-navy text-off-white font-semibold py-3.5 text-sm hover:bg-amber hover:text-navy transition-colors" data-en="Send enquiry" data-de="Anfrage senden">Send enquiry</button>
@@ -928,8 +928,18 @@ function setLang(l) {
     if (b) b.classList.toggle('lang-active', id.endsWith(l));
   });
 
+  // Swap navbar flag emoji
+  const flag = document.getElementById('lang-flag');
+  if (flag) flag.textContent = l === 'de' ? '🇩🇪' : '🇬🇧';
+
   document.documentElement.lang = l;
+
+  // If the calculator has already rendered a result, re-render it in the new language
+  const calcRes = document.getElementById('calc-result');
+  if (calcRes && calcRes.classList.contains('show')) calcUpdate();
 }
+
+function toggleLang() { setLang(lang === 'en' ? 'de' : 'en'); }
 
 setLang(lang);
 
@@ -986,6 +996,25 @@ const ROLE_RATE = {
 };
 const OPS = { housing: 2, transport: 1.5, paperwork: 0.5, sick_leave: 1, full_coordination: 3 };
 
+const CALC_I18N = {
+  en: {
+    perWorkerMulti: (lo, hi, n) => `€${lo}–€${hi} per worker/hr × ${n} workers`,
+    perWorkerSingle: 'Per worker, per hour',
+    role: n => `${n} role${n > 1 ? 's' : ''}`,
+    addon: n => `${n} add-on${n > 1 ? 's' : ''}`,
+    skill: { semi_skilled: 'semi-skilled', skilled: 'skilled', certified: 'certified' },
+    notes: (lo, hi, skill, ops) => `Est. rate: €${lo}–€${hi}/hr · Skill: ${skill} · Add-ons: ${ops || 'none'}`,
+  },
+  de: {
+    perWorkerMulti: (lo, hi, n) => `€${lo}–€${hi} pro Arbeiter/Std. × ${n} Arbeiter`,
+    perWorkerSingle: 'Pro Arbeiter, pro Stunde',
+    role: n => `${n} Rolle${n > 1 ? 'n' : ''}`,
+    addon: n => n > 1 ? `${n} Zusatzleistungen` : `${n} Zusatzleistung`,
+    skill: { semi_skilled: 'angelernt', skilled: 'qualifiziert', certified: 'zertifiziert' },
+    notes: (lo, hi, skill, ops) => `Gesch. Satz: €${lo}–€${hi}/Std. · Qualifikation: ${skill} · Zusätze: ${ops || 'keine'}`,
+  }
+};
+
 function calcUpdate() {
   const skillEl = document.querySelector('input[name="c-skill"]:checked');
   const headcount = Math.max(1, parseInt(document.getElementById('c-headcount').value) || 1);
@@ -1005,26 +1034,29 @@ function calcUpdate() {
   res.classList.add('show');
   ph.classList.add('hidden');
 
+  const i18n = CALC_I18N[lang] || CALC_I18N.en;
+
   if (headcount > 1) {
     document.getElementById('c-min').textContent = `€${(lo * headcount).toFixed(0)}`;
     document.getElementById('c-max').textContent = `€${(hi * headcount).toFixed(0)}`;
-    document.getElementById('c-per-worker').textContent = `€${lo}–€${hi} per worker/hr × ${headcount} workers`;
+    document.getElementById('c-per-worker').textContent = i18n.perWorkerMulti(lo, hi, headcount);
   } else {
     document.getElementById('c-min').textContent = `€${lo}`;
     document.getElementById('c-max').textContent = `€${hi}`;
-    document.getElementById('c-per-worker').textContent = 'Per worker, per hour';
+    document.getElementById('c-per-worker').textContent = i18n.perWorkerSingle;
   }
 
   const parts = [];
-  if (skillEl) parts.push(skillEl.value.replace('_', ' '));
-  if (roles.length) parts.push(`${roles.length} role${roles.length > 1 ? 's' : ''}`);
-  if (ops.length)   parts.push(`${ops.length} add-on${ops.length > 1 ? 's' : ''}`);
+  if (skillEl) parts.push(i18n.skill[skillEl.value] || skillEl.value);
+  if (roles.length) parts.push(i18n.role(roles.length));
+  if (ops.length)   parts.push(i18n.addon(ops.length));
   document.getElementById('c-summary').textContent = parts.join(' · ').toUpperCase();
 
+  const skillLabel = skillEl ? (i18n.skill[skillEl.value] || skillEl.value) : i18n.skill.skilled;
   prefill = {
     headcount,
     roles,
-    notes: `Est. rate: €${lo}–€${hi}/hr · Skill: ${skillEl ? skillEl.value : 'skilled'} · Add-ons: ${ops.join(', ') || 'none'}`
+    notes: i18n.notes(lo, hi, skillLabel, ops.join(', '))
   };
 }
 </script>
