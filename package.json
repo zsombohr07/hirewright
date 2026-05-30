@@ -1,0 +1,12 @@
+{
+  "name": "hirewright-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hirewright landing page — static site with an EN/DE build step.",
+  "scripts": {
+    "build:de": "node tools/build-de.js"
+  },
+  "devDependencies": {
+    "cheerio": "^1.2.0"
+  }
+}

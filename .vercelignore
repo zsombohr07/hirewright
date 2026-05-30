@@ -1,0 +1,11 @@
+# Build tooling — never deployed
+tools/
+node_modules/
+package.json
+package-lock.json
+
+# Source/working files not part of the live site
+index_backup.html
+hirewright_homepage_spec.txt
+*.textClipping
+.DS_Store
