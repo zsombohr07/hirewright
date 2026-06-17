@@ -9,20 +9,35 @@ arguments for a zero-setup offline demo.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import date
 
+from prospector.core import company_matches
 from prospector.fetchers import SampleFetcher, ApifyStepStoneFetcher
 from prospector.scoring import rollup_company_leads, pitch_line, category_summary
 from prospector.storage import Store
 from prospector.translate import translate_title
 
 
-def build_fetcher(args):
+def load_companies(path):
+    """Read a watchlist file: one company name per line, '#' lines ignored."""
+    if not path:
+        return []
+    with open(path, encoding="utf-8") as fh:
+        out = []
+        for line in fh:
+            s = line.strip()
+            if s and not s.startswith("#"):
+                out.append(s)
+    return out
+
+
+def build_fetcher(args, companies):
     if args.fetcher == "sample":
-        return SampleFetcher()
+        return SampleFetcher(companies=companies)
     if args.fetcher == "apify":
-        return ApifyStepStoneFetcher()
+        return ApifyStepStoneFetcher(companies=companies)
     raise ValueError(f"unknown fetcher: {args.fetcher}")
 
 
@@ -30,10 +45,11 @@ def _flag(value: bool, yes: str = "yes", no: str = "no") -> str:
     return yes if value else no
 
 
-def print_report(postings, upsert_result, today=None):
+def print_report(postings, upsert_result, today=None, companies=None):
     today = today or date.today()
     leads = rollup_company_leads(postings, today)
     agencies = [p for p in postings if p.is_agency]
+    companies = companies or []
 
     line = "=" * 72
     print()
@@ -50,7 +66,7 @@ def print_report(postings, upsert_result, today=None):
 
     # --- Priority leads ---------------------------------------------------
     print()
-    print("  PRIORITY LEADS  (direct employers — pay only for hours worked)")
+    print("  OPEN STAFFABLE ROLES  (your target companies — pay only for hours worked)")
     print("  " + "-" * 68)
     if not leads:
         print("  (no qualifying employers found)")
@@ -100,6 +116,27 @@ def print_report(postings, upsert_result, today=None):
     for cat, n, hc in summary:
         print(f"  {hc:>3} workers · {n} lead(s) · {cat}")
 
+    # --- Watchlist coverage -----------------------------------------------
+    if companies:
+        # "Covered" = the company surfaced an actual staffable lead, not merely
+        # any ad (a watched firm posting only office roles still counts as a gap).
+        found = {
+            c for c in companies for lead in leads if company_matches(c, lead.company)
+        }
+        missing = [c for c in companies if c not in found]
+        print()
+        print("  WATCHED — no staffable StepStone ads found")
+        print("  " + "-" * 68)
+        if not missing:
+            print("  (every watched company had at least one matching ad)")
+        else:
+            for c in missing:
+                print(f"  • {c}")
+            print(
+                "  Note: no result ≠ not hiring — they may post off StepStone "
+                "(LinkedIn, own site)."
+            )
+
     print()
     print(line)
     print("  Note: public company + job-ad data only. No personal data collected.")
@@ -121,18 +158,33 @@ def main(argv=None):
         help="data source (default: sample, offline demo)",
     )
     parser.add_argument(
+        "--companies",
+        default=None,
+        help="watchlist file: one company name per line ('#' lines ignored). "
+        "Defaults to ./companies.txt if present.",
+    )
+    parser.add_argument(
         "--query",
         default=None,
-        help="explicit StepStone search URL (apify mode; otherwise one search "
-        "per category)",
+        help="explicit StepStone search URL (apify mode; advanced escape hatch, "
+        "bypasses the company watchlist)",
     )
     parser.add_argument("--limit", type=int, default=100, help="max postings per search")
     parser.add_argument("--db", default="leads.db", help="SQLite database path")
     parser.add_argument("--csv", default="leads.csv", help="CSV export path")
     args = parser.parse_args(argv)
 
+    # Resolve the watchlist: explicit --companies, else ./companies.txt if present.
+    companies_path = args.companies
+    if companies_path is None and os.path.exists("companies.txt"):
+        companies_path = "companies.txt"
+    if args.companies and not os.path.exists(args.companies):
+        print(f"error: companies file not found: {args.companies}", file=sys.stderr)
+        return 2
+    companies = load_companies(companies_path)
+
     try:
-        fetcher = build_fetcher(args)
+        fetcher = build_fetcher(args, companies)
         fetched = fetcher.fetch(query=args.query, limit=args.limit)
     except RuntimeError as e:
         print(f"error: {e}", file=sys.stderr)
@@ -149,7 +201,7 @@ def main(argv=None):
         f"Stored to {args.db} ({result['new']} new). "
         f"Exported {rows} rows to {args.csv}."
     )
-    print_report(all_postings, result)
+    print_report(all_postings, result, companies=companies)
     return 0
 
 

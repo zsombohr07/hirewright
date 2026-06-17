@@ -2,9 +2,10 @@
 
 SampleFetcher gives a zero-setup offline demo. ApifyStepStoneFetcher delegates
 the hard part — getting past StepStone's bot protection — to a managed Apify
-actor, running one targeted search per Hirewright category. We deliberately
-implement NO bot-evasion here (no proxies, no CAPTCHA solving, no stealth
-browser).
+actor, running one targeted search per WATCHLIST COMPANY (account-based motion):
+you supply the company names, it finds those companies' current ads. We
+deliberately implement NO bot-evasion here (no proxies, no CAPTCHA solving, no
+stealth browser).
 
 Adding Indeed.de later is just one more Fetcher subclass.
 """
@@ -19,9 +20,8 @@ import urllib.error
 from datetime import date, timedelta
 from typing import List, Optional
 
-from .core import JobPosting
+from .core import JobPosting, company_matches
 from .targets import (
-    CATEGORIES,
     classify_category,
     is_staffing_agency,
     detect_urgency,
@@ -201,12 +201,24 @@ _SAMPLE_ROWS = [
 
 
 class SampleFetcher(Fetcher):
-    """Realistic offline StepStone-style postings. No network, zero setup."""
+    """Realistic offline StepStone-style postings. No network, zero setup.
+
+    With a `companies` watchlist it returns only matching rows (the same
+    account-based motion as the live fetcher); with none it returns all rows so
+    `python3 run.py` is still a full end-to-end demo.
+    """
+
+    def __init__(self, companies: Optional[List[str]] = None):
+        self.companies = companies or []
 
     def fetch(self, query: Optional[str] = None, limit: int = 100) -> List[JobPosting]:
         out: List[JobPosting] = []
         for row in _SAMPLE_ROWS[:limit]:
             company, title, url, location, salary, posted, desc, fs_days = row
+            if self.companies and not any(
+                company_matches(c, company) for c in self.companies
+            ):
+                continue
             p = JobPosting(
                 company=company,
                 title=title,
@@ -239,26 +251,36 @@ def _first(item: dict, *keys):
     return ""
 
 
-def _category_search_url(category: str) -> str:
-    """Build a StepStone DE search URL for a category's keywords."""
-    keywords = CATEGORIES[category]["keywords"]
-    what = urllib.parse.quote_plus(" ".join(keywords[:6]))
-    # StepStone keyword + location search; "in-deutschland" keeps it national.
+def _company_search_url(company: str) -> str:
+    """Build a StepStone DE search URL for one watchlist company.
+
+    Uses the company name as the search term, pinned national. The actor input
+    shape can vary between StepStone actors (see README) — adjust here if your
+    actor expects a company filter param instead of a free-text URL.
+    """
+    what = urllib.parse.quote_plus(company)
     return f"https://www.stepstone.de/jobs/{what}/in-deutschland"
 
 
 class ApifyStepStoneFetcher(Fetcher):
     """Fetch StepStone listings via a managed Apify actor.
 
-    Set APIFY_TOKEN and APIFY_ACTOR in the environment (or pass them in). With
-    no --query, it runs ONE targeted search per Hirewright category and tags the
-    results with that category. The actor handles bot protection; we just map
-    its JSON to JobPosting.
+    Set APIFY_TOKEN and APIFY_ACTOR in the environment (or pass them in). It runs
+    ONE targeted search per watchlist company, then verifies each returned ad
+    really belongs to that company (free-text search is fuzzy). The actor handles
+    bot protection; we just map its JSON to JobPosting and classify it — only
+    staffable blue-collar roles survive the downstream rollup.
     """
 
-    def __init__(self, token: Optional[str] = None, actor: Optional[str] = None):
+    def __init__(
+        self,
+        token: Optional[str] = None,
+        actor: Optional[str] = None,
+        companies: Optional[List[str]] = None,
+    ):
         self.token = token or os.environ.get("APIFY_TOKEN")
         self.actor = actor or os.environ.get("APIFY_ACTOR")
+        self.companies = companies or []
         if not self.token or not self.actor:
             raise RuntimeError(
                 "Apify fetcher needs APIFY_TOKEN and APIFY_ACTOR. Set them as "
@@ -319,16 +341,27 @@ class ApifyStepStoneFetcher(Fetcher):
         return out
 
     def fetch(self, query: Optional[str] = None, limit: int = 100) -> List[JobPosting]:
-        # One explicit search if a query is given; otherwise one per category.
+        # One explicit search if a query is given (advanced escape hatch);
+        # otherwise one search per watchlist company.
         if query:
             return self._map_items(self._run_actor(query, limit), None)
 
+        if not self.companies:
+            raise RuntimeError(
+                "Company-watchlist mode needs a company list. Pass "
+                "--companies <file> (one company name per line), or --query "
+                "<StepStone search URL> for a single explicit search."
+            )
+
         seen_urls = set()
         out: List[JobPosting] = []
-        for category in CATEGORIES:
-            url = _category_search_url(category)
+        for company in self.companies:
+            url = _company_search_url(company)
             items = self._run_actor(url, limit)
-            for p in self._map_items(items, fallback_category=category):
+            for p in self._map_items(items, fallback_category=None):
+                # Verify the ad really is this company (free-text search noise).
+                if not company_matches(company, p.company):
+                    continue
                 if p.source_url in seen_urls:
                     continue
                 seen_urls.add(p.source_url)

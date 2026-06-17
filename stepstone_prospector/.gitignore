@@ -1,5 +1,8 @@
 # Generated at runtime by run.py
 leads.db
 leads.csv
+
+# User's private watchlist (copy companies.example.txt -> companies.txt)
+companies.txt
 __pycache__/
 *.pyc

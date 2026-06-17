@@ -7,14 +7,17 @@ to industrial employers in **Germany** (automotive, manufacturing, logistics,
 construction, shipbuilding). The pitch: full operational support — housing,
 transport, paperwork, sick-leave cover — **no retainer, pay only for hours worked.**
 
-This tool scans public **StepStone (DE)** job ads and surfaces German **employers**
-who have a volume or hard-to-fill blue-collar gap in one of Hirewright's six service
-categories — i.e. companies who should be paying Hirewright to supply that labour.
+This tool is **account-based**: you give it a **watchlist of companies** (e.g. names
+you sourced on LinkedIn), and it checks **StepStone (DE)** for those companies' current
+job ads, keeping the **staffable blue-collar roles** that fall into one of Hirewright's
+six service categories — i.e. the gaps Hirewright could fill *at the accounts you care
+about*. Finding the right contact person is a separate, downstream step — by design this
+tool stays at the company level and collects no personal data.
 
 The design is **"rent the fetch, own the brain"**: the hard part (getting past
 StepStone's bot protection) is delegated to a managed [Apify](https://apify.com)
-actor, while the valuable part — turning raw ads into ranked, pitch-ready leads — is
-our own code.
+actor, running one search per watchlist company, while the valuable part — verifying the
+match and turning raw ads into ranked, pitch-ready leads — is our own code.
 
 > **Scope:** public company + job-ad data only. The tool does **not** collect, store,
 > or infer any personal data — no contact names, emails, or phone numbers. This is
@@ -28,16 +31,22 @@ No accounts, no API keys, no `pip install`. Standard-library Python 3.9+ only.
 
 ```bash
 cd stepstone_prospector
-python3 run.py
+cp companies.example.txt companies.txt        # your watchlist, one name per line
+python3 run.py --companies companies.txt
 ```
 
 This runs built-in **sample** ads through the whole pipeline so you can see it work
-end-to-end. It writes `leads.db` (SQLite) and `leads.csv`, and prints a report with:
+end-to-end, filtered to the companies in your watchlist. (Running `python3 run.py` with
+no watchlist replays *all* the sample ads, a fuller demo.) It writes `leads.db` (SQLite)
+and `leads.csv`, and prints a report with:
 
-- **PRIORITY LEADS** — direct employers, ranked by lead score, each with a ready-to-send
-  German pitch line.
+- **OPEN STAFFABLE ROLES** — your watchlist companies with a current staffable gap,
+  ranked by lead score, each with a ready-to-send German pitch line.
 - **COMPETITOR WATCH** — staffing rivals (other agencies) and where they're hiring.
 - **BY CATEGORY** — lead count and total headcount demanded per service category.
+- **WATCHED — no staffable StepStone ads found** — watchlist companies that surfaced no
+  fillable role (they may post nothing on StepStone, or only office roles). *No result ≠
+  not hiring.*
 
 Run it again and you'll see `0 new, N seen again` — postings are deduplicated on URL,
 with `first_seen` / `last_seen` freshness tracking. A lead's `status` (e.g. once you
@@ -47,9 +56,15 @@ mark it `contacted` in the DB) is **never** overwritten on re-runs.
 
 ## What the engine looks for
 
-A good lead is a **direct employer** (not another staffing agency) advertising a
-blue-collar role in one of Hirewright's six categories. All of that targeting lives in
-one editable file, **`prospector/targets.py`**:
+Targeting happens in two layers:
+
+1. **Which companies** — your **watchlist** in `companies.txt` (one name per line). This
+   is the primary targeting input; the engine only looks at these companies. Matching is
+   loose (legal suffixes and `(m/w/d)` noise are stripped via `normalize_company`), so
+   `BMW` matches `BMW AG` and `Stahlbau Becker` matches `Stahlbau Becker GmbH`.
+2. **Which of their roles count** — a role is kept only if it's a **staffable blue-collar
+   role** in one of Hirewright's six categories (and the poster isn't a staffing agency).
+   That filter lives in one editable file, **`prospector/targets.py`**:
 
 | Category | Rate | Example roles |
 |---|---|---|
@@ -122,20 +137,20 @@ signal** as much as any single ad's stated number.
    export APIFY_TOKEN=apify_api_xxx
    export APIFY_ACTOR=someuser~stepstone-scraper
    ```
-4. **Run.** With no `--query`, the engine runs **one targeted StepStone search per
-   category** (built from that category's keywords + a Germany filter) and tags the
-   results:
+4. **Run with your watchlist.** The engine runs **one targeted StepStone search per
+   company** in `companies.txt`, verifies each returned ad really belongs to that company,
+   and keeps the staffable roles:
    ```bash
-   python3 run.py --fetcher apify --limit 100
+   python3 run.py --fetcher apify --companies companies.txt --limit 100
    ```
-   Or point it at one explicit StepStone search URL:
+   Or bypass the watchlist with one explicit StepStone search URL (advanced):
    ```bash
    python3 run.py --fetcher apify \
-     --query "https://www.stepstone.de/jobs/schweisser/in-deutschland"
+     --query "https://www.stepstone.de/jobs/bmw/in-deutschland"
    ```
 
-If the token or actor is missing, the tool tells you exactly what to set (or to fall
-back to `--fetcher sample`).
+If the token or actor is missing — or you forget `--companies` — the tool tells you
+exactly what to set (or to fall back to `--fetcher sample`).
 
 > **Note on persistence with live data:** `first_seen` is set the first time *this tool*
 > sees an ad, so `days_open` starts at 0 on a fresh database and grows as you re-run the
@@ -148,7 +163,8 @@ back to `--fetcher sample`).
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--fetcher {sample,apify}` | `sample` | Data source. `sample` is the offline demo. |
-| `--query` | — | Explicit StepStone search URL (apify mode). Omit to search per category. |
+| `--companies` | `./companies.txt` if present | Watchlist file: one company name per line (`#` lines ignored). The primary targeting input. |
+| `--query` | — | Explicit StepStone search URL (apify mode). Advanced escape hatch — bypasses the watchlist. |
 | `--limit` | `100` | Max postings per search. |
 | `--db` | `leads.db` | SQLite database path. |
 | `--csv` | `leads.csv` | CSV export path. |
@@ -161,28 +177,40 @@ back to `--fetcher sample`).
 stepstone_prospector/
   prospector/
     __init__.py
-    core.py      # JobPosting model, normalization, headcount, date parsing
+    core.py      # JobPosting model, normalization, company matching, headcount, dates
     targets.py   # Hirewright config: categories, rivals, urgency + classifiers
     scoring.py   # lead scoring, company roll-up, German pitch lines
     storage.py   # SQLite upsert (dedup + freshness + status) + CSV export
-    fetchers.py  # SampleFetcher + ApifyStepStoneFetcher (per-category search)
-  run.py         # CLI entry point
+    translate.py # German -> English job-title glossary (title_en column)
+    fetchers.py  # SampleFetcher + ApifyStepStoneFetcher (per-company search)
+  run.py                 # CLI entry point
+  companies.example.txt  # watchlist template -> copy to companies.txt
   README.md
 ```
 
 Adding another source later (e.g. **Indeed.de**) is just one new `Fetcher` subclass in
 `fetchers.py` that returns classified `JobPosting` objects — the targeting, scoring, and
-reporting code is source-agnostic.
+reporting code is source-agnostic. A second source is also the natural fix for the
+StepStone-only blind spot below.
 
 ---
 
 ## Notes & limitations
 
+- **StepStone-only visibility:** the engine only sees what's on StepStone. A watchlist
+  company that advertises on LinkedIn Jobs, Indeed, or its own careers page (or simply
+  isn't hiring right now) shows up under *"no staffable ads found"* — that is **not**
+  evidence they aren't hiring. Widen coverage by adding another `Fetcher`.
+- **Fuzzy name matching:** StepStone free-text company search can return a similarly-named
+  firm; `company_matches()` (token-subset over `normalize_company`) removes most of that
+  noise but isn't perfect. For bulletproof targeting, search by each company's StepStone
+  profile URL instead of its name (you'd look each one up).
 - **Terms of service:** reading StepStone ads programmatically is against StepStone's
   ToS, so keep volume **low** — this is targeted prospecting, not mass harvesting.
   Going through a managed Apify actor keeps the fetching at arm's length; use it
   responsibly.
 - **LinkedIn was deliberately left out** — its anti-scraping posture and ToS make it a
-  poor fit for this approach.
+  poor fit for this approach. (Use it to *source* the company names; this tool checks
+  StepStone for their ads.)
 - No bot-evasion is implemented here (no proxy rotation, CAPTCHA solving, or stealth
   browser). All fetching that touches the network goes through Apify.

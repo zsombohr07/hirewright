@@ -1,0 +1,13 @@
+# Watchlist — one company name per line.
+# Paste the company names you found on LinkedIn here, then run:
+#   python3 run.py --companies companies.txt
+#
+# Lines starting with '#' (and blank lines) are ignored. Matching is loose:
+# legal suffixes and (m/w/d) noise are stripped, so "BMW" matches "BMW AG"
+# and "Stahlbau Becker" matches "Stahlbau Becker GmbH".
+#
+# Copy this file to companies.txt and edit it (companies.txt is gitignored).
+
+Stahlbau Becker
+Autowerk Niedersachsen
+Elektro Sauer

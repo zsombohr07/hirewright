@@ -110,6 +110,25 @@ def normalize_title(title: str) -> str:
     return _collapse(text)
 
 
+def company_matches(target: str, candidate: str) -> bool:
+    """True if a job ad's company (candidate) is the watchlist company (target).
+
+    Both names are run through normalize_company (legal suffixes + gender tags
+    stripped, noise collapsed), then matched as a token-subset: every word of the
+    target must appear in the candidate. So "BMW" matches "BMW AG" / "BMW Group",
+    and "Stahlbau Becker" matches "Stahlbau Becker GmbH", while an unrelated firm
+    is rejected. Deliberately lenient — StepStone free-text search is fuzzy and we
+    would rather keep a near-match than silently drop a real one.
+    """
+    t = normalize_company(target)
+    c = normalize_company(candidate)
+    if not t or not c:
+        return False
+    if t == c:
+        return True
+    return set(t.split()).issubset(set(c.split()))
+
+
 # ---------------------------------------------------------------------------
 # Headcount — deliberately conservative
 # ---------------------------------------------------------------------------
