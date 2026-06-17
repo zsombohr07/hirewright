@@ -1,0 +1,336 @@
+"""Fetchers: the "rent the fetch" half of the tool.
+
+SampleFetcher gives a zero-setup offline demo. ApifyStepStoneFetcher delegates
+the hard part — getting past StepStone's bot protection — to a managed Apify
+actor, running one targeted search per Hirewright category. We deliberately
+implement NO bot-evasion here (no proxies, no CAPTCHA solving, no stealth
+browser).
+
+Adding Indeed.de later is just one more Fetcher subclass.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import urllib.parse
+import urllib.request
+import urllib.error
+from datetime import date, timedelta
+from typing import List, Optional
+
+from .core import JobPosting
+from .targets import (
+    CATEGORIES,
+    classify_category,
+    is_staffing_agency,
+    detect_urgency,
+)
+
+
+class Fetcher:
+    """Base fetcher. Subclasses return a list of classified JobPosting objects."""
+
+    def fetch(self, query: Optional[str] = None, limit: int = 100) -> List[JobPosting]:
+        raise NotImplementedError
+
+
+def _classify(posting: JobPosting, fallback_category: Optional[str] = None) -> JobPosting:
+    """Run enrich + Hirewright classifiers on a posting. Returns it."""
+    posting.enrich()
+    posting.category = classify_category(posting.title) or (fallback_category or "")
+    posting.is_agency = is_staffing_agency(posting.company)
+    posting.urgency = detect_urgency(posting.title, posting.description)
+    return posting
+
+
+# ---------------------------------------------------------------------------
+# Offline sample data — proves the whole pipeline with zero setup.
+# ---------------------------------------------------------------------------
+
+def _days_ago(n: int) -> date:
+    return date.today() - timedelta(days=n)
+
+
+# Each row: company, title, url, location, salary, posted, description, first_seen_days
+_SAMPLE_ROWS = [
+    # (a) Direct employer, big volume, weeks open, urgent -> should TOP the list.
+    (
+        "Autowerk Niedersachsen GmbH",
+        "20 Produktionshelfer (m/w/d)",
+        "https://www.stepstone.de/job/autowerk-produktionshelfer-hannover-1",
+        "Hannover",
+        "13,50 - 15,00 EUR/Std.",
+        "vor 6 Wochen",
+        "Für unsere Fahrzeugmontage in Hannover suchen wir ab sofort "
+        "Produktionshelfer. Insgesamt 20 offene Stellen im Zwei-Schicht-Betrieb "
+        "zu besetzen.",
+        45,
+    ),
+    # (b) Direct employer, same skilled role reposted across 4 cities, long open.
+    (
+        "Stahlbau Becker GmbH",
+        "Schweißer WIG (m/w/d)",
+        "https://www.stepstone.de/job/becker-schweisser-wig-bremen-10",
+        "Bremen",
+        "",
+        "vor 9 Wochen",
+        "Erfahrene WIG-Schweißer für unseren Stahlbau gesucht.",
+        70,
+    ),
+    (
+        "Stahlbau Becker GmbH",
+        "Schweißer WIG (w/m/d)",
+        "https://www.stepstone.de/job/becker-schweisser-wig-hamburg-11",
+        "Hamburg",
+        "",
+        "vor 8 Wochen",
+        "WIG-Schweißer für Baustahl- und Anlagenbauprojekte.",
+        62,
+    ),
+    (
+        "Stahlbau Becker GmbH",
+        "Schweißer WIG (m/w/d)",
+        "https://www.stepstone.de/job/becker-schweisser-wig-kiel-12",
+        "Kiel",
+        "",
+        "vor 7 Wochen",
+        "Wir erweitern unser Schweißteam am Standort Kiel.",
+        55,
+    ),
+    (
+        "Stahlbau Becker GmbH",
+        "Schweißer WIG (all genders)",
+        "https://www.stepstone.de/job/becker-schweisser-wig-rostock-13",
+        "Rostock",
+        "",
+        "vor 6 Wochen",
+        "WIG-Schweißer für den Schiffs- und Anlagenbau.",
+        48,
+    ),
+    # (c) Staffing COMPETITOR -> must go to COMPETITOR WATCH, not leads.
+    (
+        "RegioPersonal Zeitarbeit GmbH",
+        "Staplerfahrer (m/w/d)",
+        "https://www.stepstone.de/job/regiopersonal-staplerfahrer-koeln-20",
+        "Köln",
+        "",
+        "vor 3 Tagen",
+        "Für unseren Kunden in Köln suchen wir Staplerfahrer in Arbeitnehmer"
+        "überlassung.",
+        5,
+    ),
+    # (d) Out-of-ICP role -> must be dropped entirely.
+    (
+        "Webagentur Pixelwerk GmbH",
+        "Marketing Manager (m/w/d)",
+        "https://www.stepstone.de/job/pixelwerk-marketing-manager-berlin-30",
+        "Berlin",
+        "55.000 - 65.000 EUR",
+        "vor 1 Woche",
+        "Du verantwortest unsere Online-Marketing-Kampagnen.",
+        8,
+    ),
+    # (e) DECOY: "über 500 Mitarbeitern" must NOT be read as headcount.
+    (
+        "Maschinenbau Weber GmbH & Co. KG",
+        "Industriemechaniker (m/w/d)",
+        "https://www.stepstone.de/job/weber-industriemechaniker-stuttgart-40",
+        "Stuttgart",
+        "",
+        "vor 10 Tagen",
+        "Als ein Unternehmen mit über 500 Mitarbeitern bieten wir Ihnen einen "
+        "sicheren Arbeitsplatz in der Instandhaltung.",
+        10,
+    ),
+    # Filler direct employers for a realistic spread.
+    (
+        "Rheinhafen Logistik GmbH",
+        "Kommissionierer (m/w/d)",
+        "https://www.stepstone.de/job/rheinhafen-kommissionierer-duisburg-50",
+        "Duisburg",
+        "",
+        "vor 3 Wochen",
+        "Zur Verstärkung unseres Lagers besetzen wir mehrere Stellen in der "
+        "Kommissionierung.",
+        20,
+    ),
+    (
+        "Elektro Sauer GmbH",
+        "Elektroinstallateur (m/w/d)",
+        "https://www.stepstone.de/job/sauer-elektroinstallateur-dortmund-60",
+        "Dortmund",
+        "",
+        "vor 5 Wochen",
+        "Installation und Wartung elektrotechnischer Anlagen im Industrieumfeld.",
+        35,
+    ),
+    (
+        "Schiffswerft Nord GmbH",
+        "Rohrleitungsbauer (m/w/d)",
+        "https://www.stepstone.de/job/werftnord-rohrleitungsbauer-rostock-70",
+        "Rostock",
+        "",
+        "vor 7 Wochen",
+        "Dringend gesucht: Rohrleitungsbauer für den Schiffbau, "
+        "schnellstmöglicher Einstieg.",
+        50,
+    ),
+    (
+        "CleanTec Service GmbH",
+        "Industriereiniger (m/w/d)",
+        "https://www.stepstone.de/job/cleantec-industriereiniger-frankfurt-80",
+        "Frankfurt",
+        "",
+        "vor 5 Tagen",
+        "Unterhalts- und Industriereinigung von Produktionshallen.",
+        5,
+    ),
+    # Second staffing competitor (different marker) for the watch list.
+    (
+        "Tempton Personal GmbH",
+        "Lagerhelfer (m/w/d)",
+        "https://www.stepstone.de/job/tempton-lagerhelfer-leipzig-90",
+        "Leipzig",
+        "",
+        "vor 4 Tagen",
+        "Für unseren Kunden suchen wir Lagerhelfer ab sofort.",
+        6,
+    ),
+]
+
+
+class SampleFetcher(Fetcher):
+    """Realistic offline StepStone-style postings. No network, zero setup."""
+
+    def fetch(self, query: Optional[str] = None, limit: int = 100) -> List[JobPosting]:
+        out: List[JobPosting] = []
+        for row in _SAMPLE_ROWS[:limit]:
+            company, title, url, location, salary, posted, desc, fs_days = row
+            p = JobPosting(
+                company=company,
+                title=title,
+                source_url=url,
+                source="stepstone",
+                location=location,
+                salary=salary,
+                posted_date=posted,
+                description=desc,
+            )
+            p.first_seen = _days_ago(fs_days)
+            out.append(_classify(p))
+        return out
+
+
+# ---------------------------------------------------------------------------
+# Apify — managed StepStone actor. We rent the fetch.
+# ---------------------------------------------------------------------------
+
+_APIFY_URL = (
+    "https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items?token={token}"
+)
+
+
+def _first(item: dict, *keys):
+    """Tolerant field lookup: return the first present, non-empty alias."""
+    for k in keys:
+        if k in item and item[k] not in (None, ""):
+            return item[k]
+    return ""
+
+
+def _category_search_url(category: str) -> str:
+    """Build a StepStone DE search URL for a category's keywords."""
+    keywords = CATEGORIES[category]["keywords"]
+    what = urllib.parse.quote_plus(" ".join(keywords[:6]))
+    # StepStone keyword + location search; "in-deutschland" keeps it national.
+    return f"https://www.stepstone.de/jobs/{what}/in-deutschland"
+
+
+class ApifyStepStoneFetcher(Fetcher):
+    """Fetch StepStone listings via a managed Apify actor.
+
+    Set APIFY_TOKEN and APIFY_ACTOR in the environment (or pass them in). With
+    no --query, it runs ONE targeted search per Hirewright category and tags the
+    results with that category. The actor handles bot protection; we just map
+    its JSON to JobPosting.
+    """
+
+    def __init__(self, token: Optional[str] = None, actor: Optional[str] = None):
+        self.token = token or os.environ.get("APIFY_TOKEN")
+        self.actor = actor or os.environ.get("APIFY_ACTOR")
+        if not self.token or not self.actor:
+            raise RuntimeError(
+                "Apify fetcher needs APIFY_TOKEN and APIFY_ACTOR. Set them as "
+                "environment variables (or pass token=/actor=), or use "
+                "--fetcher sample for the offline demo.\n"
+                "  export APIFY_TOKEN=apify_api_xxx\n"
+                "  export APIFY_ACTOR=<store-actor-id, e.g. someuser~stepstone-scraper>"
+            )
+
+    def _run_actor(self, search_url: str, limit: int) -> list:
+        body = json.dumps(
+            {"startUrls": [{"url": search_url}], "maxItems": limit}
+        ).encode("utf-8")
+        url = _APIFY_URL.format(actor=self.actor, token=self.token)
+        req = urllib.request.Request(
+            url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                payload = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")[:500]
+            raise RuntimeError(
+                f"Apify request failed ({e.code}). Check APIFY_ACTOR and your "
+                f"token/plan. Response: {detail}"
+            ) from e
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Could not reach Apify: {e.reason}") from e
+
+        items = json.loads(payload)
+        if isinstance(items, dict):  # some actors wrap results
+            items = items.get("items", items.get("data", []))
+        return items
+
+    def _map_items(self, items, fallback_category) -> List[JobPosting]:
+        out: List[JobPosting] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            company = _first(item, "company", "companyName", "employer")
+            title = _first(item, "title", "jobTitle", "positionName")
+            source_url = _first(item, "url", "jobUrl", "link")
+            if not company or not title or not source_url:
+                continue  # skip incomplete items
+            p = JobPosting(
+                company=str(company),
+                title=str(title),
+                source_url=str(source_url),
+                source="stepstone",
+                location=str(_first(item, "location", "city")),
+                salary=str(_first(item, "salary", "salaryText")),
+                posted_date=_first(item, "postedAt", "datePosted", "publishedAt", "date"),
+                description=str(
+                    _first(item, "description", "jobDescription", "descriptionText")
+                ),
+            )
+            out.append(_classify(p, fallback_category=fallback_category))
+        return out
+
+    def fetch(self, query: Optional[str] = None, limit: int = 100) -> List[JobPosting]:
+        # One explicit search if a query is given; otherwise one per category.
+        if query:
+            return self._map_items(self._run_actor(query, limit), None)
+
+        seen_urls = set()
+        out: List[JobPosting] = []
+        for category in CATEGORIES:
+            url = _category_search_url(category)
+            items = self._run_actor(url, limit)
+            for p in self._map_items(items, fallback_category=category):
+                if p.source_url in seen_urls:
+                    continue
+                seen_urls.add(p.source_url)
+                out.append(p)
+        return out

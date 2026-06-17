@@ -1,0 +1,5 @@
+# Generated at runtime by run.py
+leads.db
+leads.csv
+__pycache__/
+*.pyc
