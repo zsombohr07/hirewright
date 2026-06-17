@@ -382,15 +382,19 @@ class ApifyStepStoneFetcher(Fetcher):
 
         seen_urls = set()
         out: List[JobPosting] = []
-        for company in self.companies:
+        total = len(self.companies)
+        for i, company in enumerate(self.companies, 1):
+            # Live progress so a multi-minute run never looks frozen.
+            print(f"  [{i}/{total}] searching {company}…", file=sys.stderr, flush=True)
             url = _company_search_url(company)
             try:
                 items = self._run_actor(url, limit)
             except RuntimeError as e:
                 # One company failing (timeout, actor hiccup) must not sink the
                 # whole batch — skip it and keep going.
-                print(f"  ! skipped '{company}': {e}", file=sys.stderr)
+                print(f"      ↳ skipped: {e}", file=sys.stderr, flush=True)
                 continue
+            kept = 0
             for p in self._map_items(items, fallback_category=None):
                 # Verify the ad really is this company (free-text search noise).
                 if not company_matches(company, p.company):
@@ -399,4 +403,10 @@ class ApifyStepStoneFetcher(Fetcher):
                     continue
                 seen_urls.add(p.source_url)
                 out.append(p)
+                kept += 1
+            print(
+                f"      ↳ {len(items)} ad(s) found, {kept} matched {company}",
+                file=sys.stderr,
+                flush=True,
+            )
         return out
