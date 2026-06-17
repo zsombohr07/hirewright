@@ -128,33 +128,60 @@ signal** as much as any single ad's stated number.
 
 1. **Create an Apify account** at <https://apify.com> and copy your API token from
    *Settings → Integrations* (`apify_api_xxx`).
-2. **Pick a StepStone actor** from the [Apify Store](https://apify.com/store) — search
-   for "StepStone". Note its actor ID (e.g. `someuser~stepstone-scraper`). Actors vary;
-   this tool maps their output tolerantly, but you may need to adjust the input shape in
-   `prospector/fetchers.py` for a specific actor.
-3. **Set the environment variables:**
+2. **Set your token** (the actor is already wired — see below):
    ```bash
    export APIFY_TOKEN=apify_api_xxx
-   export APIFY_ACTOR=someuser~stepstone-scraper
    ```
-4. **Run with your watchlist.** The engine runs **one targeted StepStone search per
+3. **Run with your watchlist.** The engine runs **one targeted StepStone search per
    company** in `companies.txt`, verifies each returned ad really belongs to that company,
    and keeps the staffable roles:
    ```bash
-   python3 run.py --fetcher apify --companies companies.txt --limit 100
+   python3 run.py --fetcher apify --companies companies.txt --limit 30
    ```
    Or bypass the watchlist with one explicit StepStone search URL (advanced):
    ```bash
    python3 run.py --fetcher apify \
-     --query "https://www.stepstone.de/jobs/bmw/in-deutschland"
+     --query "https://www.stepstone.de/jobs/bmw?searchOrigin=Homepage_top-search"
    ```
 
-If the token or actor is missing — or you forget `--companies` — the tool tells you
-exactly what to set (or to fall back to `--fetcher sample`).
+**The actor.** Out of the box this targets
+[`easyapi/stepstone-jobs-scraper`](https://apify.com/easyapi/stepstone-jobs-scraper)
+(~$3 / 1,000 results), which takes StepStone search URLs and returns clean company/title
+fields. You don't need to set `APIFY_ACTOR` unless you want a different one — if you do,
+note that the URL shape (`_company_search_url`) and the field mapping (`_map_items`) in
+`prospector/fetchers.py` are tuned to easyapi and may need adjusting.
+
+**Cost at your scale.** easyapi bills a 30-result minimum per search, so ~100
+companies/month ≈ ~3,000 results ≈ **~$9/month** (just over Apify's free $5 tier). Keep
+`--limit 30` to stay at the floor. On the free plan, runs simply **pause** when credits
+run out — no surprise bill.
+
+If the token is missing — or you forget `--companies` — the tool tells you exactly what
+to set (or to fall back to `--fetcher sample`).
 
 > **Note on persistence with live data:** `first_seen` is set the first time *this tool*
 > sees an ad, so `days_open` starts at 0 on a fresh database and grows as you re-run the
 > engine over days/weeks. The repost and volume signals work from the first run.
+
+---
+
+## The unified contact list
+
+Every run also writes a **unified company+contact sheet** to
+`../Unified list/unified_list.csv` (a folder next to the tool). This is where you "unify"
+the job signal with the people you'll actually call:
+
+- **Contact columns first, left blank for you:** `contact_first_name`,
+  `contact_last_name`, `email`, `phone`, `phone_secondary`.
+- **Then the job signal** the engine found: `company`, `lead_score`, `category`, `rate`,
+  `open_roles`, `total_headcount`, `top_role`, `top_role_en`, `all_roles`, `locations`,
+  `max_days_open`, `urgent`, `job_urls`, `last_seen`.
+
+One row per company (sorted hottest-first), so each row is one account = one contact to
+research. Re-runs **merge on company name**: contacts you've typed are never overwritten,
+job columns refresh, new companies are appended, dropped-off companies are kept, and any
+columns *you* add by hand (e.g. `notes`) are preserved. The file holds personal data, so
+it is **git-ignored** — keep it off GitHub.
 
 ---
 
@@ -165,9 +192,10 @@ exactly what to set (or to fall back to `--fetcher sample`).
 | `--fetcher {sample,apify}` | `sample` | Data source. `sample` is the offline demo. |
 | `--companies` | `./companies.txt` if present | Watchlist file: one company name per line (`#` lines ignored). The primary targeting input. |
 | `--query` | — | Explicit StepStone search URL (apify mode). Advanced escape hatch — bypasses the watchlist. |
-| `--limit` | `100` | Max postings per search. |
+| `--limit` | `100` | Max postings per search (min 30 on the easyapi actor; use `30` to minimise cost). |
 | `--db` | `leads.db` | SQLite database path. |
 | `--csv` | `leads.csv` | CSV export path. |
+| `--unified` | `../Unified list/unified_list.csv` | Unified company+contact list (merge-preserving). |
 
 ---
 
@@ -182,10 +210,12 @@ stepstone_prospector/
     scoring.py   # lead scoring, company roll-up, German pitch lines
     storage.py   # SQLite upsert (dedup + freshness + status) + CSV export
     translate.py # German -> English job-title glossary (title_en column)
+    unified.py   # merge-preserving company+contact list export
     fetchers.py  # SampleFetcher + ApifyStepStoneFetcher (per-company search)
   run.py                 # CLI entry point
   companies.example.txt  # watchlist template -> copy to companies.txt
   README.md
+../Unified list/unified_list.csv  # generated; your contacts + the job signal (git-ignored)
 ```
 
 Adding another source later (e.g. **Indeed.de**) is just one new `Fetcher` subclass in

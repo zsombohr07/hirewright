@@ -251,15 +251,21 @@ def _first(item: dict, *keys):
     return ""
 
 
-def _company_search_url(company: str) -> str:
-    """Build a StepStone DE search URL for one watchlist company.
+# Default actor — easyapi's StepStone scraper (well-documented, ~$3/1k results).
+# Override with APIFY_ACTOR if you pick a different one; you may then need to
+# adjust _company_search_url / _map_items to match its URL + output shape.
+_DEFAULT_ACTOR = "easyapi~stepstone-jobs-scraper"
 
-    Uses the company name as the search term, pinned national. The actor input
-    shape can vary between StepStone actors (see README) — adjust here if your
-    actor expects a company filter param instead of a free-text URL.
+
+def _company_search_url(company: str) -> str:
+    """Build a StepStone DE keyword-search URL for one watchlist company.
+
+    The `?searchOrigin=` param is REQUIRED: without it StepStone redirects a bare
+    `/jobs/<name>` to the company *profile* page and the actor returns nothing.
+    Tuned for the easyapi actor; a different actor may want another URL shape.
     """
     what = urllib.parse.quote_plus(company)
-    return f"https://www.stepstone.de/jobs/{what}/in-deutschland"
+    return f"https://www.stepstone.de/jobs/{what}?searchOrigin=Homepage_top-search"
 
 
 class ApifyStepStoneFetcher(Fetcher):
@@ -279,20 +285,27 @@ class ApifyStepStoneFetcher(Fetcher):
         companies: Optional[List[str]] = None,
     ):
         self.token = token or os.environ.get("APIFY_TOKEN")
-        self.actor = actor or os.environ.get("APIFY_ACTOR")
+        self.actor = actor or os.environ.get("APIFY_ACTOR") or _DEFAULT_ACTOR
         self.companies = companies or []
-        if not self.token or not self.actor:
+        if not self.token:
             raise RuntimeError(
-                "Apify fetcher needs APIFY_TOKEN and APIFY_ACTOR. Set them as "
-                "environment variables (or pass token=/actor=), or use "
-                "--fetcher sample for the offline demo.\n"
+                "Apify fetcher needs APIFY_TOKEN. Set it as an environment "
+                "variable (or pass token=), or use --fetcher sample for the "
+                "offline demo.\n"
                 "  export APIFY_TOKEN=apify_api_xxx\n"
-                "  export APIFY_ACTOR=<store-actor-id, e.g. someuser~stepstone-scraper>"
+                f"  export APIFY_ACTOR=<actor-id>   # optional, defaults to {_DEFAULT_ACTOR}"
             )
 
     def _run_actor(self, search_url: str, limit: int) -> list:
+        # easyapi shape: searchUrls (list of plain URLs), maxItems (min 30), and
+        # an Apify proxy — without the proxy StepStone blocks the actor (empty
+        # results). maxItems is the per-search cap and what you're billed on.
         body = json.dumps(
-            {"startUrls": [{"url": search_url}], "maxItems": limit}
+            {
+                "searchUrls": [search_url],
+                "maxItems": max(limit, 30),
+                "proxyConfiguration": {"useApifyProxy": True},
+            }
         ).encode("utf-8")
         url = _APIFY_URL.format(actor=self.actor, token=self.token)
         req = urllib.request.Request(
@@ -325,16 +338,22 @@ class ApifyStepStoneFetcher(Fetcher):
             source_url = _first(item, "url", "jobUrl", "link")
             if not company or not title or not source_url:
                 continue  # skip incomplete items
+            source_url = str(source_url)
+            if source_url.startswith("/"):  # easyapi returns relative job URLs
+                source_url = "https://www.stepstone.de" + source_url
             p = JobPosting(
                 company=str(company),
                 title=str(title),
-                source_url=str(source_url),
+                source_url=source_url,
                 source="stepstone",
                 location=str(_first(item, "location", "city")),
                 salary=str(_first(item, "salary", "salaryText")),
                 posted_date=_first(item, "postedAt", "datePosted", "publishedAt", "date"),
                 description=str(
-                    _first(item, "description", "jobDescription", "descriptionText")
+                    _first(
+                        item, "description", "jobDescription", "descriptionText",
+                        "textSnippet",
+                    )
                 ),
             )
             out.append(_classify(p, fallback_category=fallback_category))

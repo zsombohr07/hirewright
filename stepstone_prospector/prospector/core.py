@@ -24,7 +24,10 @@ _GENDER_TAG_RE = re.compile(
     r"""
     \(?\s*                      # optional opening paren
     (?:
-        [mwdfx](?:\s*[/|]\s*[mwdfx])+   # m/w/d, w/m/d, d/m/w, m/w/d/x ...
+        # m/w/d, w/m/d, m/w/d/x, and the common "div"/"divers" final segment
+        # (e.g. w/m/div., m/w/divers). At least one separator required so a bare
+        # single letter is never stripped.
+        [mwdfx](?:\s*[/|]\s*(?:div(?:ers)?|[mwdfx]))+
         |
         all\s+genders
         |
@@ -32,7 +35,7 @@ _GENDER_TAG_RE = re.compile(
         |
         gn                      # "gn" = geschlechtsneutral
     )
-    \s*\)?                       # optional closing paren
+    \s*\.?\s*\)?                 # optional trailing dot (div.) + closing paren
     """,
     re.IGNORECASE | re.VERBOSE,
 )

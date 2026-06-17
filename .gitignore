@@ -1,2 +1,5 @@
 node_modules/
 .DS_Store
+
+# Sales contact data — never commit (PII)
+Unified list/

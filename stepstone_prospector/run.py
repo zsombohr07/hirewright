@@ -18,6 +18,18 @@ from prospector.fetchers import SampleFetcher, ApifyStepStoneFetcher
 from prospector.scoring import rollup_company_leads, pitch_line, category_summary
 from prospector.storage import Store
 from prospector.translate import translate_title
+from prospector.unified import export_unified
+
+# Default unified-list path: the "Unified list" folder next to this tool, resolved
+# from the script location so it works regardless of the current directory.
+_DEFAULT_UNIFIED = os.path.normpath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "Unified list",
+        "unified_list.csv",
+    )
+)
 
 
 def load_companies(path):
@@ -172,6 +184,12 @@ def main(argv=None):
     parser.add_argument("--limit", type=int, default=100, help="max postings per search")
     parser.add_argument("--db", default="leads.db", help="SQLite database path")
     parser.add_argument("--csv", default="leads.csv", help="CSV export path")
+    parser.add_argument(
+        "--unified",
+        default=_DEFAULT_UNIFIED,
+        help="unified company+contact list (merge-preserving). "
+        "Defaults to the 'Unified list' folder next to the tool.",
+    )
     args = parser.parse_args(argv)
 
     # Resolve the watchlist: explicit --companies, else ./companies.txt if present.
@@ -197,10 +215,14 @@ def main(argv=None):
         rows = store.export_csv(args.csv)
         all_postings = store.all_postings()
 
+    leads = rollup_company_leads(all_postings)
+    unified_rows = export_unified(leads, all_postings, args.unified)
+
     print(
         f"Stored to {args.db} ({result['new']} new). "
         f"Exported {rows} rows to {args.csv}."
     )
+    print(f"Unified list: {unified_rows} companies merged -> {args.unified}")
     print_report(all_postings, result, companies=companies)
     return 0
 
