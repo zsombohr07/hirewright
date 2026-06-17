@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import os
+import socket
+import sys
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -242,6 +244,10 @@ _APIFY_URL = (
     "https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items?token={token}"
 )
 
+# Per-request read timeout (seconds). run-sync waits for the scrape to finish, so
+# this needs headroom for a slow company; a failure here just skips that company.
+_REQUEST_TIMEOUT = 300
+
 
 def _first(item: dict, *keys):
     """Tolerant field lookup: return the first present, non-empty alias."""
@@ -312,7 +318,7 @@ class ApifyStepStoneFetcher(Fetcher):
             url, data=body, headers={"Content-Type": "application/json"}, method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
                 payload = resp.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", "replace")[:500]
@@ -322,6 +328,8 @@ class ApifyStepStoneFetcher(Fetcher):
             ) from e
         except urllib.error.URLError as e:
             raise RuntimeError(f"Could not reach Apify: {e.reason}") from e
+        except (TimeoutError, socket.timeout) as e:
+            raise RuntimeError(f"Apify request timed out after {_REQUEST_TIMEOUT}s") from e
 
         items = json.loads(payload)
         if isinstance(items, dict):  # some actors wrap results
@@ -376,7 +384,13 @@ class ApifyStepStoneFetcher(Fetcher):
         out: List[JobPosting] = []
         for company in self.companies:
             url = _company_search_url(company)
-            items = self._run_actor(url, limit)
+            try:
+                items = self._run_actor(url, limit)
+            except RuntimeError as e:
+                # One company failing (timeout, actor hiccup) must not sink the
+                # whole batch — skip it and keep going.
+                print(f"  ! skipped '{company}': {e}", file=sys.stderr)
+                continue
             for p in self._map_items(items, fallback_category=None):
                 # Verify the ad really is this company (free-text search noise).
                 if not company_matches(company, p.company):
