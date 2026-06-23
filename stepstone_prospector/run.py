@@ -14,8 +14,17 @@ import sys
 from datetime import date
 
 from prospector.core import company_matches
-from prospector.fetchers import SampleFetcher, ApifyStepStoneFetcher
-from prospector.scoring import rollup_company_leads, pitch_line, category_summary
+from prospector.fetchers import (
+    SampleFetcher,
+    ApifyStepStoneFetcher,
+    ApifyIndeedFetcher,
+)
+from prospector.scoring import (
+    rollup_company_leads,
+    select_latest_per_company,
+    pitch_line,
+    category_summary,
+)
 from prospector.storage import Store
 from prospector.translate import translate_title
 from prospector.unified import export_unified
@@ -48,8 +57,12 @@ def load_companies(path):
 def build_fetcher(args, companies):
     if args.fetcher == "sample":
         return SampleFetcher(companies=companies)
+    if args.fetcher == "sample-indeed":
+        return SampleFetcher(companies=companies, source="indeed")
     if args.fetcher == "apify":
         return ApifyStepStoneFetcher(companies=companies)
+    if args.fetcher == "indeed":
+        return ApifyIndeedFetcher(companies=companies)
     raise ValueError(f"unknown fetcher: {args.fetcher}")
 
 
@@ -57,7 +70,9 @@ def _flag(value: bool, yes: str = "yes", no: str = "no") -> str:
     return yes if value else no
 
 
-def print_report(postings, upsert_result, today=None, companies=None):
+def print_report(
+    postings, upsert_result, today=None, companies=None, source_label="StepStone (DE)"
+):
     today = today or date.today()
     leads = rollup_company_leads(postings, today)
     agencies = [p for p in postings if p.is_agency]
@@ -66,7 +81,7 @@ def print_report(postings, upsert_result, today=None, companies=None):
     line = "=" * 72
     print()
     print(line)
-    print("  HIREWRIGHT SALES-LEAD ENGINE — StepStone (DE)")
+    print(f"  HIREWRIGHT SALES-LEAD ENGINE — {source_label}")
     print(line)
     print(f"  Postings analysed : {len(postings)}")
     print(f"  Qualified leads   : {len(leads)} direct employers")
@@ -137,7 +152,7 @@ def print_report(postings, upsert_result, today=None, companies=None):
         }
         missing = [c for c in companies if c not in found]
         print()
-        print("  WATCHED — no staffable StepStone ads found")
+        print(f"  WATCHED — no staffable {source_label} ads found")
         print("  " + "-" * 68)
         if not missing:
             print("  (every watched company had at least one matching ad)")
@@ -145,8 +160,8 @@ def print_report(postings, upsert_result, today=None, companies=None):
             for c in missing:
                 print(f"  • {c}")
             print(
-                "  Note: no result ≠ not hiring — they may post off StepStone "
-                "(LinkedIn, own site)."
+                "  Note: no result ≠ not hiring — they may post elsewhere "
+                "(other boards, own site)."
             )
 
     print()
@@ -165,9 +180,10 @@ def main(argv=None):
     )
     parser.add_argument(
         "--fetcher",
-        choices=["sample", "apify"],
+        choices=["sample", "apify", "indeed", "sample-indeed"],
         default="sample",
-        help="data source (default: sample, offline demo)",
+        help="data source: 'apify' = StepStone (DE), 'indeed' = Indeed (DE), "
+        "'sample'/'sample-indeed' = offline demos (default: sample)",
     )
     parser.add_argument(
         "--companies",
@@ -209,6 +225,26 @@ def main(argv=None):
         return 2
 
     print(f"Fetched {len(fetched)} postings via '{args.fetcher}' fetcher.")
+
+    if args.fetcher in ("indeed", "sample-indeed"):
+        # Indeed motion: keep ONE ad per firm (latest among the relevant), then
+        # merge into the single combined sheet tagged source=indeed. No SQLite /
+        # leads.csv — the unified list is the sole deliverable and ad-age comes
+        # from each posting's publish date (first_seen).
+        collapsed = select_latest_per_company(fetched)
+        leads = rollup_company_leads(collapsed)
+        unified_rows = export_unified(
+            leads, collapsed, args.unified, source="indeed"
+        )
+        result = {"new": len(collapsed), "seen_again": 0}
+        print(
+            f"Collapsed to {len(collapsed)} firm(s) (one latest ad each). "
+            f"Unified list: {unified_rows} companies merged -> {args.unified}"
+        )
+        print_report(
+            collapsed, result, companies=companies, source_label="Indeed (DE)"
+        )
+        return 0
 
     with Store(args.db) as store:
         result = store.upsert_many(fetched)

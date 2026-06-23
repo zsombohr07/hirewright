@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional, Tuple
 
-from .core import JobPosting
+from .core import JobPosting, normalize_company
 from .targets import category_rate
 
 
@@ -72,6 +72,41 @@ def score_posting(posting: JobPosting, today: Optional[date] = None) -> int:
     persistence = _persistence_points(posting, today)
     urgency = 3 if posting.urgency else 0
     return volume + persistence + urgency
+
+
+# ---------------------------------------------------------------------------
+# One-ad-per-firm selection ("latest among relevant")
+# ---------------------------------------------------------------------------
+
+def _posting_date(posting: JobPosting) -> date:
+    """Best available date for recency: posted_date, else first_seen, else epoch."""
+    for d in (posting.posted_date, posting.first_seen):
+        if isinstance(d, date):
+            return d
+    return date.min
+
+
+def select_latest_per_company(
+    postings: List[JobPosting], today: Optional[date] = None
+) -> List[JobPosting]:
+    """Collapse to ONE ad per company: the latest among the *relevant* ones.
+
+    "Relevant" = a direct employer (not a staffing agency) whose role is in the
+    Hirewright ICP (has a category). Among those, keep the most recently posted
+    ad per normalized company, tie-broken by lead score so a same-day tie keeps
+    the stronger signal. Off-ICP and competitor ads are dropped entirely.
+    """
+    today = today or date.today()
+    best: dict = {}
+    for p in postings:
+        if p.is_agency or not p.category:
+            continue
+        key = p.company_norm or normalize_company(p.company)
+        rank = (_posting_date(p), score_posting(p, today))
+        cur = best.get(key)
+        if cur is None or rank > cur[0]:
+            best[key] = (rank, p)
+    return [v[1] for v in best.values()]
 
 
 # ---------------------------------------------------------------------------

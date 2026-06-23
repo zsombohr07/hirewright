@@ -165,6 +165,39 @@ to set (or to fall back to `--fetcher sample`).
 
 ---
 
+## Indeed (DE) — one ad per firm, one combined sheet
+
+The same engine also scans **Indeed.de**, with three deliberate differences from the
+StepStone motion:
+
+1. **One ad per firm.** Instead of keeping every ad, the Indeed run collapses each company
+   to a **single** posting — the *latest among the relevant* ones (filter to your trade
+   categories, then take the most recently posted, tie-broken by lead score).
+2. **One combined spreadsheet.** It writes into the **same** `../Unified list/unified_list.csv`
+   as StepStone, adding a `source` column (`stepstone` / `indeed`) so one sheet holds both
+   boards. A firm found on both collapses to one row whose job columns reflect the most
+   recent run.
+3. **Freshest only.** Each search is `de.indeed.com/jobs?q=<company>&sort=date&fromage=14`
+   — newest-first, last 14 days — so the pull is small and current.
+
+```bash
+export APIFY_TOKEN=apify_api_xxx
+# optional — defaults to easyapi~indeed-jobs-scraper:
+export APIFY_INDEED_ACTOR=easyapi~indeed-jobs-scraper
+python3 run.py --fetcher indeed --companies companies.txt --limit 20
+```
+
+The Indeed path uses no SQLite/`leads.csv` — the merge-preserving unified sheet is the sole
+deliverable, and ad-age (`max_days_open`) comes from each ad's publish date. Offline demo
+(no Apify credit): `python3 run.py --fetcher sample-indeed`.
+
+The actor is [`easyapi/indeed-jobs-scraper`](https://apify.com/easyapi/indeed-jobs-scraper)
+(~$2.99 / 1,000 results). Its input (`searchUrl`) and output (nested `salary`,
+`publishTimestamp`) shapes are tuned in `ApifyIndeedFetcher` in `prospector/fetchers.py`; a
+different actor may need adjusting there.
+
+---
+
 ## The unified contact list
 
 Every run also writes a **unified company+contact sheet** to
@@ -173,9 +206,10 @@ the job signal with the people you'll actually call:
 
 - **Contact columns first, left blank for you:** `contact_first_name`,
   `contact_last_name`, `email`, `phone`, `phone_secondary`.
-- **Then the job signal** the engine found: `company`, `lead_score`, `category`, `rate`,
-  `open_roles`, `total_headcount`, `top_role`, `top_role_en`, `all_roles`, `locations`,
-  `max_days_open`, `urgent`, `job_urls`, `last_seen`.
+- **Then the job signal** the engine found: `company`, `source`, `lead_score`, `category`,
+  `rate`, `open_roles`, `total_headcount`, `top_role`, `top_role_en`, `all_roles`,
+  `locations`, `max_days_open`, `urgent`, `job_urls`, `last_seen`. (`source` shows which
+  board the row came from — `stepstone` or `indeed`.)
 
 One row per company (sorted hottest-first), so each row is one account = one contact to
 research. Re-runs **merge on company name**: contacts you've typed are never overwritten,
@@ -189,9 +223,9 @@ it is **git-ignored** — keep it off GitHub.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--fetcher {sample,apify}` | `sample` | Data source. `sample` is the offline demo. |
-| `--companies` | `./companies.txt` if present | Watchlist file: one company name per line (`#` lines ignored). The primary targeting input. |
-| `--query` | — | Explicit StepStone search URL (apify mode). Advanced escape hatch — bypasses the watchlist. |
+| `--fetcher {sample,apify,indeed,sample-indeed}` | `sample` | Data source. `apify` = StepStone (DE), `indeed` = Indeed (DE), `sample`/`sample-indeed` = offline demos. |
+| `--companies` | `./companies.txt` if present | Watchlist file: one company name per line (`#` lines ignored). The primary targeting input — reused for both boards. |
+| `--query` | — | Explicit search URL (apify/indeed mode). Advanced escape hatch — bypasses the watchlist. |
 | `--limit` | `100` | Max postings per search (min 30 on the easyapi actor; use `30` to minimise cost). |
 | `--db` | `leads.db` | SQLite database path. |
 | `--csv` | `leads.csv` | CSV export path. |

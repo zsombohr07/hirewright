@@ -32,6 +32,7 @@ CONTACT_COLUMNS = [
 ]
 JOB_COLUMNS = [
     "company",
+    "source",
     "lead_score",
     "category",
     "rate",
@@ -49,10 +50,11 @@ JOB_COLUMNS = [
 UNIFIED_COLUMNS = CONTACT_COLUMNS + JOB_COLUMNS
 
 
-def _job_row(lead, urls, today) -> dict:
+def _job_row(lead, urls, today, source) -> dict:
     top = lead.top_role
     return {
         "company": lead.company,
+        "source": source,
         "lead_score": lead.score,
         "category": lead.category,
         "rate": lead.rate,
@@ -69,11 +71,21 @@ def _job_row(lead, urls, today) -> dict:
     }
 
 
-def export_unified(leads, postings, path: str, today: Optional[date] = None) -> int:
-    """Write/merge the unified company+contact list. Returns row count written."""
+def export_unified(
+    leads,
+    postings,
+    path: str,
+    today: Optional[date] = None,
+    source: str = "stepstone",
+) -> int:
+    """Write/merge the unified company+contact list. Returns row count written.
+
+    `source` tags each row written this run (e.g. "stepstone" or "indeed") so a
+    single combined sheet can hold leads from more than one job board.
+    """
     today = today or date.today()
 
-    # StepStone job URLs per company (staffable postings only).
+    # Job URLs per company (staffable postings only).
     urls_by_key: dict = {}
     for p in postings:
         if p.is_agency or not p.category:
@@ -101,7 +113,7 @@ def export_unified(leads, postings, path: str, today: Optional[date] = None) -> 
     for lead in leads:
         key = normalize_company(lead.company)
         row = {c: "" for c in fieldnames}
-        row.update(_job_row(lead, urls_by_key.get(key, []), today))
+        row.update(_job_row(lead, urls_by_key.get(key, []), today, source))
         prev = existing.get(key)
         if prev:
             for c in CONTACT_COLUMNS + extra_cols:
