@@ -4,5 +4,7 @@ leads.csv
 
 # User's private watchlist (copy companies.example.txt -> companies.txt)
 companies.txt
+# Watchlist derived from the contact list by enrich_contacts.py
+contacts_companies.txt
 __pycache__/
 *.pyc

@@ -8,18 +8,25 @@ original columns untouched — and appends the engine's job columns. Because the
 join is per-person, a company appearing more than once is fine: every person at
 BMW gets BMW's job signal.
 
-Offline by default (built-in sample ads, no Apify token, no cost):
+It auto-discovers the CSV in ../Input lists/ and writes <name>.enriched.csv next
+to it (your original file is never touched). Offline by default (built-in sample
+ads, no Apify token, no cost):
 
     cd stepstone_prospector
-    python3 enrich_contacts.py
+    python3 enrich_contacts.py                       # offline test, all rows
+    python3 enrich_contacts.py --max-contacts 100    # offline test, first 100
 
-Live (real boards) once you've proven it works. 'auto' tries Indeed first and
-falls back to StepStone only for the companies Indeed found nothing for:
+Preview the cost of a live run without spending anything:
 
     export APIFY_TOKEN=apify_api_xxx
-    python3 enrich_contacts.py --fetcher auto --limit 30
-    python3 enrich_contacts.py --fetcher indeed --limit 20   # Indeed only
-    python3 enrich_contacts.py --fetcher apify  --limit 30   # StepStone only
+    python3 enrich_contacts.py --fetcher auto --max-contacts 100 --dry-run
+
+Live (real boards). 'auto' tries Indeed first and falls back to StepStone only
+for the companies Indeed found nothing for:
+
+    python3 enrich_contacts.py --fetcher auto --max-contacts 100   # paid test
+    python3 enrich_contacts.py --fetcher indeed   # Indeed only, all rows
+    python3 enrich_contacts.py --fetcher apify    # StepStone only, all rows
 
 Reuses the existing engine (prospector/*) — no changes to it.
 """
@@ -45,10 +52,41 @@ from prospector.scoring import (
 from prospector.translate import translate_title
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_IN = os.path.normpath(os.path.join(_HERE, "..", "Input lists", "contacts.csv"))
-_DEFAULT_OUT = os.path.normpath(
-    os.path.join(_HERE, "..", "Input lists", "enriched_contacts.csv")
-)
+_INPUT_DIR = os.path.normpath(os.path.join(_HERE, "..", "Input lists"))
+_ENRICHED_SUFFIX = ".enriched.csv"  # our outputs — excluded from auto-discovery
+
+
+def _discover_input():
+    """Find the contact CSV to read when --in is not given.
+
+    Prefers 'contacts.csv'; otherwise the single non-output *.csv in Input lists/.
+    Returns (path, error_message) — exactly one is None.
+    """
+    preferred = os.path.join(_INPUT_DIR, "contacts.csv")
+    if os.path.exists(preferred):
+        return preferred, None
+    if not os.path.isdir(_INPUT_DIR):
+        return None, f"input folder not found: {_INPUT_DIR}"
+    candidates = sorted(
+        f for f in os.listdir(_INPUT_DIR)
+        if f.lower().endswith(".csv") and not f.lower().endswith(_ENRICHED_SUFFIX)
+    )
+    if not candidates:
+        return None, f"no input .csv found in {_INPUT_DIR}"
+    if len(candidates) > 1:
+        listing = ", ".join(candidates)
+        return None, (
+            f"multiple CSVs in {_INPUT_DIR} ({listing}); "
+            "pick one with --in <file>"
+        )
+    return os.path.join(_INPUT_DIR, candidates[0]), None
+
+
+def _default_output_for(in_path):
+    """Derive '<stem>.enriched.csv' next to the input so the original is untouched."""
+    folder = os.path.dirname(in_path) or "."
+    stem = os.path.splitext(os.path.basename(in_path))[0]
+    return os.path.join(folder, stem + _ENRICHED_SUFFIX)
 
 # Job-signal columns appended to each person (company is already in their row).
 JOB_COLUMNS = [
@@ -68,7 +106,16 @@ JOB_COLUMNS = [
 
 
 def _detect_company_column(fieldnames):
-    """Find the column that holds the company name (case-insensitive substring)."""
+    """Find the column holding the company name.
+
+    Prefer an exact header ('company name' / 'company') so we never grab a
+    look-alike like 'Company Name for Emails' or 'Company Address'; fall back to
+    a substring match only if no exact header exists.
+    """
+    lowered = {col.lower().strip(): col for col in fieldnames}
+    for exact in ("company name", "company", "company_name", "employer"):
+        if exact in lowered:
+            return lowered[exact]
     for needle in ("company", "firm", "organi", "employer", "account"):
         for col in fieldnames:
             if needle in col.lower():
@@ -191,6 +238,32 @@ def _fetch_leads(fetcher_name, companies, limit):
     return _fetch_single("sample", companies, limit)
 
 
+# easyapi actor pricing: per-result billing at each search's maxItems floor.
+_INDEED_MIN, _INDEED_RATE = 20, 2.99 / 1000
+_STEP_MIN, _STEP_RATE = 30, 3.00 / 1000
+
+
+def _estimate_cost(fetcher_name, n_companies):
+    """Human-readable cost estimate string for a live run, or None for offline."""
+    if fetcher_name == "sample" or n_companies == 0:
+        return None
+    if fetcher_name == "indeed":
+        c = n_companies * _INDEED_MIN * _INDEED_RATE
+        return f"~${c:.2f} ({n_companies} Indeed searches)"
+    if fetcher_name == "apify":
+        c = n_companies * _STEP_MIN * _STEP_RATE
+        return f"~${c:.2f} ({n_companies} StepStone searches)"
+    # auto: Indeed for all, StepStone fallback for the misses (unknown until run)
+    indeed = n_companies * _INDEED_MIN * _INDEED_RATE
+    step_worst = n_companies * _STEP_MIN * _STEP_RATE
+    low = indeed + step_worst * 0.5   # ~half fall back
+    high = indeed + step_worst        # every company falls back
+    return (
+        f"~${low:.2f}–${high:.2f} ({n_companies} Indeed searches"
+        f" + StepStone fallback for the misses)"
+    )
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Enrich a people list with per-company job-ad signal."
@@ -204,19 +277,46 @@ def main(argv=None):
         "'sample' = offline demo (default: sample). 'auto'/'indeed'/'apify' need "
         "APIFY_TOKEN.",
     )
-    parser.add_argument("--in", dest="infile", default=_DEFAULT_IN,
-                        help="input contact CSV (default: ../Input lists/contacts.csv)")
-    parser.add_argument("--out", dest="outfile", default=_DEFAULT_OUT,
-                        help="output CSV (default: ../Input lists/enriched_contacts.csv)")
+    parser.add_argument("--in", dest="infile", default=None,
+                        help="input contact CSV (default: auto-discover the CSV in "
+                        "../Input lists/)")
+    parser.add_argument("--out", dest="outfile", default=None,
+                        help="output CSV (default: <input>.enriched.csv next to the "
+                        "input, leaving the original untouched)")
     parser.add_argument("--limit", type=int, default=100, help="max postings per search")
+    parser.add_argument("--max-contacts", dest="max_contacts", type=int, default=None,
+                        help="only process the FIRST N contacts (hard cap on how "
+                        "many companies get searched — e.g. 100 for a test run)")
+    parser.add_argument("--dry-run", dest="dry_run", action="store_true",
+                        help="show what would be searched + a cost estimate, then "
+                        "exit WITHOUT calling Apify ($0)")
     args = parser.parse_args(argv)
 
-    fieldnames, rows = _read_contacts(args.infile)
+    # Resolve input: explicit --in, else auto-discover in ../Input lists/.
+    infile = args.infile
+    if infile is None:
+        infile, err = _discover_input()
+        if err:
+            print(f"error: {err}", file=sys.stderr)
+            return 2
+        print(f"Using input: {infile}")
+    outfile = args.outfile or _default_output_for(infile)
+
+    fieldnames, rows = _read_contacts(infile)
     if rows is None:
         return 2
     if not rows:
         print("error: contact file has no rows.", file=sys.stderr)
         return 2
+
+    # Hard cap BEFORE anything else, so a live run can only ever touch these rows.
+    if args.max_contacts is not None and args.max_contacts >= 0:
+        if len(rows) > args.max_contacts:
+            print(
+                f"Capping to the first {args.max_contacts} of {len(rows)} contacts "
+                f"(--max-contacts)."
+            )
+            rows = rows[: args.max_contacts]
 
     company_col = _detect_company_column(fieldnames)
     if not company_col:
@@ -240,6 +340,18 @@ def main(argv=None):
         for c in companies:
             fh.write(c + "\n")
     print(f"Wrote {len(companies)} companies -> contacts_companies.txt")
+
+    estimate = _estimate_cost(args.fetcher, len(companies))
+    if estimate:
+        print(f"Live run via '{args.fetcher}': estimated cost {estimate}.")
+
+    if args.dry_run:
+        print(
+            f"\nDry run — would search {len(companies)} company(ies) via "
+            f"'{args.fetcher}' and write {outfile}."
+        )
+        print("No Apify calls made, $0 spent. Drop --dry-run to run for real.")
+        return 0
 
     try:
         leads, postings = _fetch_leads(args.fetcher, companies, args.limit)
@@ -285,15 +397,15 @@ def main(argv=None):
     rows.sort(key=_score, reverse=True)
 
     out_fields = list(fieldnames) + [c for c in JOB_COLUMNS if c not in fieldnames]
-    os.makedirs(os.path.dirname(args.outfile) or ".", exist_ok=True)
-    with open(args.outfile, "w", newline="", encoding="utf-8") as fh:
+    os.makedirs(os.path.dirname(outfile) or ".", exist_ok=True)
+    with open(outfile, "w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=out_fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
 
     print(
         f"Enriched {matched}/{len(rows)} contacts with a job match "
-        f"-> {args.outfile}"
+        f"-> {outfile}"
     )
     print("  (blank job columns = no staffable ad found — no result != not hiring.)")
     return 0
