@@ -13,11 +13,13 @@ Offline by default (built-in sample ads, no Apify token, no cost):
     cd stepstone_prospector
     python3 enrich_contacts.py
 
-Live (real boards) once you've proven it works:
+Live (real boards) once you've proven it works. 'auto' tries Indeed first and
+falls back to StepStone only for the companies Indeed found nothing for:
 
     export APIFY_TOKEN=apify_api_xxx
-    python3 enrich_contacts.py --fetcher apify --limit 30
-    python3 enrich_contacts.py --fetcher indeed --limit 20
+    python3 enrich_contacts.py --fetcher auto --limit 30
+    python3 enrich_contacts.py --fetcher indeed --limit 20   # Indeed only
+    python3 enrich_contacts.py --fetcher apify  --limit 30   # StepStone only
 
 Reuses the existing engine (prospector/*) — no changes to it.
 """
@@ -135,12 +137,22 @@ def _report_repeats(rows, company_col):
     return [counts[k]["display"] for k in order]
 
 
-def _fetch_leads(fetcher_name, companies, limit):
-    """Run the chosen fetcher + roll up to per-company leads. Returns (leads, postings)."""
-    if fetcher_name == "apify":
+def _company_found(company, leads):
+    """True if any lead matches this company (fuzzy, either direction)."""
+    return any(
+        company_matches(company, l.company) or company_matches(l.company, company)
+        for l in leads
+    )
+
+
+def _fetch_single(board, companies, limit):
+    """Fetch ONE board + roll up to per-company leads. Returns (leads, postings)."""
+    if not companies:
+        return [], []
+    if board == "stepstone":
         postings = ApifyStepStoneFetcher(companies=companies).fetch(limit=limit)
         return rollup_company_leads(postings), postings
-    if fetcher_name == "indeed":
+    if board == "indeed":
         postings = ApifyIndeedFetcher(companies=companies).fetch(limit=limit)
         collapsed = select_latest_per_company(postings)
         return rollup_company_leads(collapsed), collapsed
@@ -149,16 +161,48 @@ def _fetch_leads(fetcher_name, companies, limit):
     return rollup_company_leads(postings), postings
 
 
+def _fetch_leads(fetcher_name, companies, limit):
+    """Run the chosen fetcher + roll up to per-company leads. Returns (leads, postings).
+
+    'auto' = try Indeed for every company first, then fall back to StepStone ONLY
+    for the companies Indeed found nothing staffable for.
+    """
+    if fetcher_name == "apify":
+        return _fetch_single("stepstone", companies, limit)
+    if fetcher_name == "indeed":
+        return _fetch_single("indeed", companies, limit)
+    if fetcher_name == "auto":
+        print("  [pass 1/2] Indeed (DE)…", file=sys.stderr)
+        leads, postings = _fetch_single("indeed", companies, limit)
+        missing = [c for c in companies if not _company_found(c, leads)]
+        if missing:
+            print(
+                f"  [pass 2/2] StepStone (DE) fallback for {len(missing)} "
+                f"company(ies) Indeed missed…",
+                file=sys.stderr,
+            )
+            leads2, postings2 = _fetch_single("stepstone", missing, limit)
+            leads = leads + leads2
+            postings = postings + postings2
+        else:
+            print("  [pass 2/2] skipped — Indeed covered every company.", file=sys.stderr)
+        return leads, postings
+    # sample (offline demo)
+    return _fetch_single("sample", companies, limit)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Enrich a people list with per-company job-ad signal."
     )
     parser.add_argument(
         "--fetcher",
-        choices=["sample", "apify", "indeed"],
+        choices=["sample", "auto", "indeed", "apify"],
         default="sample",
-        help="data source: 'apify' = StepStone (DE), 'indeed' = Indeed (DE), "
-        "'sample' = offline demo (default: sample)",
+        help="data source: 'auto' = Indeed first, StepStone fallback for misses; "
+        "'indeed' = Indeed (DE) only; 'apify' = StepStone (DE) only; "
+        "'sample' = offline demo (default: sample). 'auto'/'indeed'/'apify' need "
+        "APIFY_TOKEN.",
     )
     parser.add_argument("--in", dest="infile", default=_DEFAULT_IN,
                         help="input contact CSV (default: ../Input lists/contacts.csv)")
@@ -197,7 +241,11 @@ def main(argv=None):
             fh.write(c + "\n")
     print(f"Wrote {len(companies)} companies -> contacts_companies.txt")
 
-    leads, postings = _fetch_leads(args.fetcher, companies, args.limit)
+    try:
+        leads, postings = _fetch_leads(args.fetcher, companies, args.limit)
+    except RuntimeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     print(f"Fetched job signal for {len(leads)} company(ies) via '{args.fetcher}'.")
 
     # Job URLs per company (staffable postings only).
