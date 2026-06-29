@@ -21,8 +21,17 @@ Preview the cost of a live run without spending anything:
     export APIFY_TOKEN=apify_api_xxx
     python3 enrich_contacts.py --fetcher auto --max-contacts 100 --dry-run
 
-Live (real boards). 'auto' tries Indeed first and falls back to StepStone only
-for the companies Indeed found nothing for:
+Live via Claude (recommended). Researches each company's OWN careers page +
+the web, recognises the company despite name variants, and judges role fit —
+no board-coverage gap, no brittle name/keyword matching. Needs ANTHROPIC_API_KEY
+and also writes <name>.diagnostic.csv explaining every empty company:
+
+    export ANTHROPIC_API_KEY=sk-ant-xxx
+    python3 enrich_contacts.py --fetcher claude --max-contacts 100 --dry-run  # $0 preview
+    python3 enrich_contacts.py --fetcher claude --max-contacts 100            # paid test
+
+Live via job boards (Apify). 'auto' tries Indeed first and falls back to
+StepStone only for the companies Indeed found nothing for:
 
     python3 enrich_contacts.py --fetcher auto --max-contacts 100   # paid test
     python3 enrich_contacts.py --fetcher indeed   # Indeed only, all rows
@@ -44,6 +53,7 @@ from prospector.fetchers import (
     SampleFetcher,
     ApifyStepStoneFetcher,
     ApifyIndeedFetcher,
+    ClaudeResearchFetcher,
 )
 from prospector.scoring import (
     rollup_company_leads,
@@ -193,23 +203,33 @@ def _company_found(company, leads):
 
 
 def _fetch_single(board, companies, limit):
-    """Fetch ONE board + roll up to per-company leads. Returns (leads, postings)."""
+    """Fetch ONE board + roll up to per-company leads.
+
+    Returns (leads, postings, diagnostics) — diagnostics is a per-company list
+    (Claude research only; empty for the board scrapers).
+    """
     if not companies:
-        return [], []
+        return [], [], []
     if board == "stepstone":
         postings = ApifyStepStoneFetcher(companies=companies).fetch(limit=limit)
-        return rollup_company_leads(postings), postings
+        return rollup_company_leads(postings), postings, []
     if board == "indeed":
         postings = ApifyIndeedFetcher(companies=companies).fetch(limit=limit)
         collapsed = select_latest_per_company(postings)
-        return rollup_company_leads(collapsed), collapsed
+        return rollup_company_leads(collapsed), collapsed, []
+    if board == "claude":
+        fetcher = ClaudeResearchFetcher(companies=companies)
+        postings = fetcher.fetch(limit=limit)
+        return rollup_company_leads(postings), postings, fetcher.diagnostics
     # sample (offline demo)
     postings = SampleFetcher(companies=companies).fetch(limit=limit)
-    return rollup_company_leads(postings), postings
+    return rollup_company_leads(postings), postings, []
 
 
 def _fetch_leads(fetcher_name, companies, limit):
-    """Run the chosen fetcher + roll up to per-company leads. Returns (leads, postings).
+    """Run the chosen fetcher + roll up to per-company leads.
+
+    Returns (leads, postings, diagnostics).
 
     'auto' = try Indeed for every company first, then fall back to StepStone ONLY
     for the companies Indeed found nothing staffable for.
@@ -218,9 +238,11 @@ def _fetch_leads(fetcher_name, companies, limit):
         return _fetch_single("stepstone", companies, limit)
     if fetcher_name == "indeed":
         return _fetch_single("indeed", companies, limit)
+    if fetcher_name == "claude":
+        return _fetch_single("claude", companies, limit)
     if fetcher_name == "auto":
         print("  [pass 1/2] Indeed (DE)…", file=sys.stderr)
-        leads, postings = _fetch_single("indeed", companies, limit)
+        leads, postings, diag = _fetch_single("indeed", companies, limit)
         missing = [c for c in companies if not _company_found(c, leads)]
         if missing:
             print(
@@ -228,12 +250,12 @@ def _fetch_leads(fetcher_name, companies, limit):
                 f"company(ies) Indeed missed…",
                 file=sys.stderr,
             )
-            leads2, postings2 = _fetch_single("stepstone", missing, limit)
+            leads2, postings2, _ = _fetch_single("stepstone", missing, limit)
             leads = leads + leads2
             postings = postings + postings2
         else:
             print("  [pass 2/2] skipped — Indeed covered every company.", file=sys.stderr)
-        return leads, postings
+        return leads, postings, diag
     # sample (offline demo)
     return _fetch_single("sample", companies, limit)
 
@@ -241,12 +263,22 @@ def _fetch_leads(fetcher_name, companies, limit):
 # easyapi actor pricing: per-result billing at each search's maxItems floor.
 _INDEED_MIN, _INDEED_RATE = 20, 2.99 / 1000
 _STEP_MIN, _STEP_RATE = 30, 3.00 / 1000
+# Claude research: one Messages call per company. Web search is billed per search
+# (~$10/1k) and a call makes a handful; tokens add a little on top. Rough rule of
+# thumb of ~$0.05–0.10 per company, used only for the upfront estimate.
+_CLAUDE_PER_COMPANY = 0.08
 
 
 def _estimate_cost(fetcher_name, n_companies):
     """Human-readable cost estimate string for a live run, or None for offline."""
     if fetcher_name == "sample" or n_companies == 0:
         return None
+    if fetcher_name == "claude":
+        c = n_companies * _CLAUDE_PER_COMPANY
+        return (
+            f"~${c:.2f} ({n_companies} Claude web-research calls, "
+            "~$0.05–0.10 each)"
+        )
     if fetcher_name == "indeed":
         c = n_companies * _INDEED_MIN * _INDEED_RATE
         return f"~${c:.2f} ({n_companies} Indeed searches)"
@@ -270,9 +302,11 @@ def main(argv=None):
     )
     parser.add_argument(
         "--fetcher",
-        choices=["sample", "auto", "indeed", "apify"],
+        choices=["sample", "claude", "auto", "indeed", "apify"],
         default="sample",
-        help="data source: 'auto' = Indeed first, StepStone fallback for misses; "
+        help="data source: 'claude' = Claude researches each company's live "
+        "openings via web search (needs ANTHROPIC_API_KEY); "
+        "'auto' = Indeed first, StepStone fallback for misses; "
         "'indeed' = Indeed (DE) only; 'apify' = StepStone (DE) only; "
         "'sample' = offline demo (default: sample). 'auto'/'indeed'/'apify' need "
         "APIFY_TOKEN.",
@@ -350,15 +384,37 @@ def main(argv=None):
             f"\nDry run — would search {len(companies)} company(ies) via "
             f"'{args.fetcher}' and write {outfile}."
         )
-        print("No Apify calls made, $0 spent. Drop --dry-run to run for real.")
+        print("No calls made, $0 spent. Drop --dry-run to run for real.")
         return 0
 
     try:
-        leads, postings = _fetch_leads(args.fetcher, companies, args.limit)
+        leads, postings, diagnostics = _fetch_leads(
+            args.fetcher, companies, args.limit
+        )
     except RuntimeError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     print(f"Fetched job signal for {len(leads)} company(ies) via '{args.fetcher}'.")
+
+    # Per-company diagnostic (Claude research): why each company is empty vs a hit,
+    # so "no result" is never ambiguous. Written next to the enriched file.
+    if diagnostics:
+        diag_path = os.path.splitext(outfile)[0] + ".diagnostic.csv"
+        if diag_path.endswith(".enriched.diagnostic.csv"):
+            diag_path = diag_path.replace(".enriched.diagnostic.csv", ".diagnostic.csv")
+        diag_fields = [
+            "company", "careers_url", "roles_seen", "staffable_roles",
+            "categories", "empty_reason", "error",
+        ]
+        with open(diag_path, "w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=diag_fields, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(diagnostics)
+        n_empty = sum(1 for d in diagnostics if not d.get("staffable_roles"))
+        print(
+            f"Wrote per-company diagnostic for {len(diagnostics)} companies "
+            f"({n_empty} with no staffable role) -> {diag_path}"
+        )
 
     # Job URLs per company (staffable postings only).
     urls_by_key = {}

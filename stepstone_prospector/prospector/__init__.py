@@ -33,7 +33,13 @@ from .scoring import (
     RoleLead,
 )
 from .storage import Store
-from .fetchers import Fetcher, SampleFetcher, ApifyStepStoneFetcher
+from .fetchers import (
+    Fetcher,
+    SampleFetcher,
+    ApifyStepStoneFetcher,
+    ApifyIndeedFetcher,
+    ClaudeResearchFetcher,
+)
 
 __all__ = [
     "JobPosting",
@@ -58,4 +64,6 @@ __all__ = [
     "Fetcher",
     "SampleFetcher",
     "ApifyStepStoneFetcher",
+    "ApifyIndeedFetcher",
+    "ClaudeResearchFetcher",
 ]

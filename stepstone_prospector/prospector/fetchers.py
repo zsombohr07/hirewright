@@ -24,6 +24,7 @@ from typing import List, Optional
 
 from .core import JobPosting, company_matches
 from .targets import (
+    CATEGORIES,
     classify_category,
     is_staffing_agency,
     detect_urgency,
@@ -584,6 +585,322 @@ class ApifyIndeedFetcher(Fetcher):
                 kept += 1
             print(
                 f"      ↳ {len(items)} ad(s) found, {kept} matched {company}",
+                file=sys.stderr,
+                flush=True,
+            )
+        return out
+
+
+# ---------------------------------------------------------------------------
+# Claude research — let the model find each company's live openings.
+#
+# Same account-based motion as the Apify fetchers (one search per watchlist
+# company), but instead of renting a board scraper we ask Claude to research the
+# company directly: its OWN careers page / ATS first, then the open web. This
+# fixes the three ways the board scrapers silently lose companies:
+#   * coverage — most of these industrial firms post on their own site, not a
+#     board, and only the last 14 days are visible on Indeed;
+#   * name matching — the model recognises "Panasonic Automotive Systems Europe
+#     GmbH" on its careers page even when an ad just says "Panasonic";
+#   * classification — the model judges role fit against Hirewright's six
+#     categories instead of a ~60-word keyword whitelist.
+# Downstream (rollup → scoring → CSV) is untouched: we hand back JobPostings
+# whose .category is already one of the six (or "" = out of scope), exactly what
+# rollup_company_leads expects.
+# ---------------------------------------------------------------------------
+
+_ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+_ANTHROPIC_VERSION = "2023-06-01"
+# Web research + reading a few pages can be slow; give it headroom. A timeout
+# just skips that one company (recorded in the diagnostic), never the batch.
+_CLAUDE_TIMEOUT = 240
+# Sonnet is the cost/quality sweet spot for this fan-out; override per run.
+_DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6"
+
+
+def _extract_json_obj(text: str):
+    """Return the LAST balanced top-level JSON object in `text`, or None.
+
+    The model is told to end with one JSON object, but web-search runs can leave
+    prose around it. Scans brace depth (string-aware) and json.loads the last
+    complete {...}.
+    """
+    candidates = []
+    depth = 0
+    start = None
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start is not None:
+                    candidates.append(text[start : i + 1])
+                    start = None
+    for cand in reversed(candidates):
+        try:
+            return json.loads(cand)
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _category_guidance() -> str:
+    """Bullet list of the six categories + sample German titles, for the prompt."""
+    lines = []
+    for cat, cfg in CATEGORIES.items():
+        sample = ", ".join(cfg["keywords"][:8])
+        lines.append(f'  - "{cat}" (~{cfg["rate"]}): e.g. {sample}')
+    return "\n".join(lines)
+
+
+def _classify_claude(posting: JobPosting, category: str) -> JobPosting:
+    """Like _classify, but trust the model's category instead of the keyword list.
+
+    The keyword whitelist is exactly what we're replacing, so we set the category
+    from the model (already validated to one of the six, or "" for out-of-scope)
+    and still reuse the cheap deterministic enrichers for everything else.
+    """
+    posting.enrich()
+    posting.category = category
+    posting.is_agency = is_staffing_agency(posting.company)
+    posting.urgency = posting.urgency or detect_urgency(
+        posting.title, posting.description
+    )
+    # Indeed/StepStone seed first_seen from storage; Claude has no store, so seed
+    # it from the ad's own posted date (scoring's days_open reads first_seen).
+    if isinstance(posting.posted_date, date):
+        posting.first_seen = posting.posted_date
+    return posting
+
+
+class ClaudeResearchFetcher(Fetcher):
+    """Research each watchlist company's live openings via Claude + web search.
+
+    One Anthropic Messages call per company, with the server-side web_search
+    tool. The model returns a JSON object of current German openings, each tagged
+    to a Hirewright category and backed by a source URL; we turn the staffable
+    ones into JobPostings. Per-company diagnostics (careers page found, roles
+    seen, why-empty) are collected on `self.diagnostics` for the caller to dump.
+
+    Needs ANTHROPIC_API_KEY (metered API billing, separate from a Claude Code
+    subscription). Override the model with CLAUDE_RESEARCH_MODEL.
+    """
+
+    def __init__(
+        self,
+        token: Optional[str] = None,
+        model: Optional[str] = None,
+        companies: Optional[List[str]] = None,
+    ):
+        self.token = token or os.environ.get("ANTHROPIC_API_KEY")
+        self.model = (
+            model or os.environ.get("CLAUDE_RESEARCH_MODEL") or _DEFAULT_CLAUDE_MODEL
+        )
+        self.companies = companies or []
+        self.diagnostics: List[dict] = []
+        if not self.token:
+            raise RuntimeError(
+                "Claude research fetcher needs ANTHROPIC_API_KEY. Set it as an "
+                "environment variable (metered API billing, separate from your "
+                "Claude Code subscription).\n"
+                "  export ANTHROPIC_API_KEY=sk-ant-…\n"
+                f"  export CLAUDE_RESEARCH_MODEL=<model-id>   # optional, defaults "
+                f"to {_DEFAULT_CLAUDE_MODEL}"
+            )
+
+    _SYSTEM = (
+        "You are a sourcing researcher for Hirewright, an industrial "
+        "labour-leasing firm that leases blue-collar crews to employers in "
+        "GERMANY. For one named company you find its CURRENT open job postings "
+        "and report only the blue-collar roles Hirewright could staff.\n\n"
+        "Method, in order:\n"
+        "1. Find the company's official careers/jobs page (also check its ATS: "
+        "softgarden, Personio, Workday, SuccessFactors, Greenhouse, etc.).\n"
+        "2. Read its currently open positions located in Germany.\n"
+        "3. Cross-check the open web (Google Jobs, Indeed, StepStone, LinkedIn) "
+        "for the same company to catch roles the site hides behind JavaScript.\n\n"
+        "Classify every blue-collar opening into exactly one Hirewright category "
+        "(use the German title to judge — synonyms count, you are NOT limited to "
+        "the example words):\n"
+        "%(cats)s\n"
+        "Anything office/white-collar/engineering/management, or any role you "
+        'cannot tie to a live posting URL, is "out_of_scope".\n\n'
+        "Hard rules:\n"
+        "- Only report a role if you have a real, current source URL for it. If "
+        "you cannot verify it, leave it out. Never invent postings or URLs.\n"
+        "- Germany-based roles only.\n"
+        "- Output ONE JSON object as the LAST thing in your reply, no prose "
+        "after it, matching exactly:\n"
+        "{\n"
+        '  "company": str,\n'
+        '  "careers_url": str|null,\n'
+        '  "roles": [\n'
+        '    {"title": str, "category": "<one of the six names above>|out_of_scope", '
+        '"location": str, "url": str, "count": int, '
+        '"posted_date": "YYYY-MM-DD"|null, "urgent": bool}\n'
+        "  ],\n"
+        '  "empty_reason": str|null   // if no staffable roles: why — e.g. '
+        '"no careers page found", "hiring only office roles", "not hiring", '
+        '"could not verify"\n'
+        "}"
+    )
+
+    def _system_prompt(self) -> str:
+        return self._SYSTEM % {"cats": _category_guidance()}
+
+    def _post(self, body: dict) -> dict:
+        data = json.dumps(body).encode("utf-8")
+        req = urllib.request.Request(
+            _ANTHROPIC_URL,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": self.token,
+                "anthropic-version": _ANTHROPIC_VERSION,
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=_CLAUDE_TIMEOUT) as resp:
+                payload = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")[:500]
+            raise RuntimeError(
+                f"Anthropic request failed ({e.code}). Check ANTHROPIC_API_KEY "
+                f"and your plan. Response: {detail}"
+            ) from e
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Could not reach Anthropic: {e.reason}") from e
+        except (TimeoutError, socket.timeout) as e:
+            raise RuntimeError(
+                f"Anthropic request timed out after {_CLAUDE_TIMEOUT}s"
+            ) from e
+        return json.loads(payload)
+
+    def _research(self, company: str) -> dict:
+        """Call Claude for one company; return the parsed JSON dict (raises on error)."""
+        body = {
+            "model": self.model,
+            "max_tokens": 4096,
+            "system": self._system_prompt(),
+            "tools": [
+                {"type": "web_search_20250305", "name": "web_search", "max_uses": 6}
+            ],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": (
+                        f"Company: {company}\n"
+                        "Research this company's current open positions in Germany "
+                        "and report the staffable blue-collar roles as specified."
+                    ),
+                }
+            ],
+        }
+        resp = self._post(body)
+        text = "".join(
+            b.get("text", "")
+            for b in resp.get("content", [])
+            if isinstance(b, dict) and b.get("type") == "text"
+        )
+        obj = _extract_json_obj(text)
+        if obj is None:
+            raise RuntimeError("model returned no parseable JSON")
+        return obj
+
+    def _postings_from(self, company: str, obj: dict) -> List[JobPosting]:
+        """Turn one company's research JSON into staffable JobPostings (+diagnostic)."""
+        valid = set(CATEGORIES.keys())
+        roles = obj.get("roles") or []
+        out: List[JobPosting] = []
+        n_staffable = 0
+        cats_seen = set()
+        for role in roles:
+            if not isinstance(role, dict):
+                continue
+            cat = role.get("category") or ""
+            cat = cat if cat in valid else ""  # out_of_scope / unknown -> dropped
+            url = (role.get("url") or "").strip()
+            title = (role.get("title") or "").strip()
+            if not cat or not url or not title:
+                continue  # not staffable, or unverifiable (no URL) -> skip
+            cats_seen.add(cat)
+            n_staffable += 1
+            count = role.get("count")
+            p = JobPosting(
+                company=company,
+                title=title,
+                source_url=url,
+                source="claude",
+                location=str(role.get("location") or ""),
+                posted_date=role.get("posted_date") or None,
+                description="",
+            )
+            p.urgency = bool(role.get("urgent"))
+            _classify_claude(p, cat)
+            if isinstance(count, int) and count > 0:
+                p.headcount = count  # model's stated openings -> total_headcount
+            out.append(p)
+        self.diagnostics.append(
+            {
+                "company": company,
+                "careers_url": obj.get("careers_url") or "",
+                "roles_seen": len(roles),
+                "staffable_roles": n_staffable,
+                "categories": "; ".join(sorted(cats_seen)),
+                "empty_reason": "" if n_staffable else (obj.get("empty_reason") or ""),
+                "error": "",
+            }
+        )
+        return out
+
+    def fetch(self, query: Optional[str] = None, limit: int = 100) -> List[JobPosting]:
+        if not self.companies:
+            raise RuntimeError(
+                "Claude research needs a company list (one company per row in the "
+                "contact CSV)."
+            )
+        out: List[JobPosting] = []
+        total = len(self.companies)
+        for i, company in enumerate(self.companies, 1):
+            print(f"  [{i}/{total}] researching {company}…", file=sys.stderr, flush=True)
+            try:
+                obj = self._research(company)
+            except RuntimeError as e:
+                # One company failing must not sink the batch — log + record it.
+                print(f"      ↳ skipped: {e}", file=sys.stderr, flush=True)
+                self.diagnostics.append(
+                    {
+                        "company": company,
+                        "careers_url": "",
+                        "roles_seen": 0,
+                        "staffable_roles": 0,
+                        "categories": "",
+                        "empty_reason": "",
+                        "error": str(e)[:200],
+                    }
+                )
+                continue
+            postings = self._postings_from(company, obj)
+            out.extend(postings)
+            print(
+                f"      ↳ {len(obj.get('roles') or [])} role(s) seen, "
+                f"{len(postings)} staffable",
                 file=sys.stderr,
                 flush=True,
             )
