@@ -152,52 +152,51 @@ export const copy = {
     button: 'Request workers',
   },
 
-  // Why Hirewright, rendered as a Without-us / With-us comparison table.
-  // NOTE: content supplied in Hungarian; the rest of the page is English.
+  // Why Hirewright, rendered as a Without / With comparison.
   why: {
     heading: 'Why Hirewright',
-    withoutLabel: 'Nélkülünk',
-    withLabel: 'Velünk',
+    withoutLabel: 'Without Hirewright',
+    withLabel: 'With Hirewright',
     rows: [
       {
-        without: 'Fix havi költség akkor is, ha nincs munka',
-        with: 'Csak a ténylegesen ledolgozott órák után számlázunk.',
+        without: 'Fixed monthly costs even when there is no work.',
+        with: 'You pay only for the hours actually worked.',
       },
       {
-        without: 'Folyamatos vita a túlórákról',
-        with: 'Munkavállalóink a magasabb keresetért érkeznek, ezért nyitottak a túlórára.',
+        without: 'Constant arguments over overtime.',
+        with: 'Our workers come for the higher earnings, so they welcome overtime.',
       },
       {
-        without: 'Kommunikációs problémák a műhelyben',
-        with: 'Minden brigádban van legalább egy jól németül vagy angolul beszélő kapcsolattartó.',
+        without: 'Communication breaks down on the shop floor.',
+        with: 'Every crew has a point of contact who speaks solid German or English.',
       },
       {
-        without: 'Előlegek, hóközi kifizetések kezelése a megrendelő feladata',
-        with: 'A teljes bérügyi adminisztrációt és az előlegek kezelését mi végezzük.',
+        without: 'Advances and mid-month payments land on you.',
+        with: 'We handle all payroll administration and advances.',
       },
       {
-        without: 'Szezonális létszám-ingadozás nehezen kezelhető',
-        with: 'Rugalmas létszámbővítés és létszámcsökkentés projektigény szerint.',
+        without: 'Seasonal swings in headcount are hard to manage.',
+        with: 'Scale the crew up or down to match project demand.',
       },
       {
-        without: 'Magas bérköltség és HR-adminisztráció',
-        with: 'Egyszerű, átlátható szolgáltatási számla, kiszámítható költségtervezéssel.',
+        without: 'High wage costs and HR overhead.',
+        with: 'One transparent service invoice, with predictable cost planning.',
       },
       {
-        without: 'A vezetők idejét emberi konfliktusok emésztik fel',
-        with: 'Mi kezeljük a napi HR-problémákat, Ön a termelésre koncentrálhat.',
+        without: 'People problems eat up your managers’ time.',
+        with: 'We handle the day-to-day HR issues so you can focus on production.',
       },
       {
-        without: 'A termelés és a dolgozók között gyakoriak a félreértések',
-        with: 'Mi vagyunk a kapcsolat a tulajdonos, a termelésvezető és a munkavállalók között.',
+        without: 'Frequent misunderstandings between production and the crew.',
+        with: 'We are the link between owner, production manager, and workers.',
       },
       {
-        without: 'Munkaerőhiány miatt csúsznak a projektek',
-        with: 'Gyors toborzás Magyarországról és Kelet-Európából, saját adatbázisból és aktív kereséssel.',
+        without: 'Projects slip because of labour shortages.',
+        with: 'Fast recruitment from Hungary and Eastern Europe, our own database plus active sourcing.',
       },
       {
-        without: 'Egy új szolgáltató mindig kockázatot jelent',
-        with: 'Hosszú távú partnerség, folyamatos kapcsolattartás és utógondozás a teljes projekt alatt.',
+        without: 'A new supplier is always a risk.',
+        with: 'A long-term partnership, with ongoing contact and support across the whole project.',
       },
     ],
   },
