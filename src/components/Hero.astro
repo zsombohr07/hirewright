@@ -1,0 +1,42 @@
+---
+import { copy } from '../content/copy.en';
+const { hero } = copy;
+---
+
+<section class="relative overflow-hidden bg-navy text-paper">
+  <!-- Faint signage grid, purely decorative. -->
+  <div
+    class="pointer-events-none absolute inset-0 opacity-[0.04]"
+    aria-hidden="true"
+    style="background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px);background-size:64px 64px"
+  >
+  </div>
+
+  <div class="shell relative py-20 md:py-28 lg:py-32">
+    <div class="max-w-4xl">
+      <p class="eyebrow mb-6 flex items-center gap-3 text-amber">
+        <span class="h-2 w-2 bg-amber" aria-hidden="true"></span>
+        {hero.eyebrow}
+      </p>
+
+      <h1 class="display text-display-xl text-paper">
+        {hero.h1}
+      </h1>
+
+      <p class="mt-7 max-w-2xl text-lg leading-relaxed text-paper/85 md:text-xl">
+        {hero.sub}
+      </p>
+
+      <p class="mt-5 font-mono text-sm leading-relaxed text-paper/60">
+        {hero.support}
+      </p>
+
+      <div class="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <a href="#request" class="btn-amber">{hero.primaryCta}</a>
+        <button type="button" class="btn-outline-invert" data-open-quote>
+          {hero.secondaryCta}
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

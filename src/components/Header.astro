@@ -1,0 +1,83 @@
+---
+import { copy } from '../content/copy.en';
+const { nav } = copy;
+---
+
+<header class="sticky top-0 z-50 border-b border-white/10 bg-navy/95 backdrop-blur supports-[backdrop-filter]:bg-navy/85">
+  <div class="shell flex h-16 items-center justify-between">
+    <a href="/" class="group flex items-baseline gap-2" aria-label="Hirewright home">
+      <span class="display text-xl leading-none text-paper">Hirewright</span>
+      <span class="hidden h-3 w-px bg-amber sm:block" aria-hidden="true"></span>
+      <span class="hidden font-mono text-[0.625rem] uppercase tracking-caps text-paper/55 sm:block">
+        Est. 2001
+      </span>
+    </a>
+
+    <nav class="hidden items-center gap-8 lg:flex" aria-label="Primary">
+      {
+        nav.links.map((link) => (
+          <a
+            href={link.href}
+            class="font-mono text-xs uppercase tracking-caps text-paper/70 transition-colors hover:text-amber"
+          >
+            {link.label}
+          </a>
+        ))
+      }
+      <a href="#request" class="btn-amber py-2.5">{nav.cta}</a>
+    </nav>
+
+    <button
+      type="button"
+      id="menu-toggle"
+      class="lg:hidden"
+      aria-expanded="false"
+      aria-controls="mobile-menu"
+      aria-label="Open menu"
+    >
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-paper" aria-hidden="true">
+        <line x1="3" y1="7" x2="21" y2="7"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="17" x2="21" y2="17"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div id="mobile-menu" class="hidden border-t border-white/10 bg-navy lg:hidden">
+    <nav class="shell flex flex-col py-3" aria-label="Mobile">
+      {
+        nav.links.map((link) => (
+          <a
+            href={link.href}
+            class="border-b border-white/10 py-3 font-mono text-sm uppercase tracking-caps text-paper/80"
+            data-close-menu
+          >
+            {link.label}
+          </a>
+        ))
+      }
+      <a href="#request" class="btn-amber mt-4" data-close-menu>{nav.cta}</a>
+    </nav>
+  </div>
+</header>
+
+<script is:inline>
+  (function () {
+    var toggle = document.getElementById('menu-toggle');
+    var menu = document.getElementById('mobile-menu');
+    if (!toggle || !menu) return;
+    function setOpen(open) {
+      menu.classList.toggle('hidden', !open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () {
+      setOpen(menu.classList.contains('hidden'));
+    });
+    menu.querySelectorAll('[data-close-menu]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        setOpen(false);
+      });
+    });
+  })();
+</script>

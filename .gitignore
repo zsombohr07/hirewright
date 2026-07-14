@@ -1,6 +1,11 @@
 node_modules/
 .DS_Store
 
+# Astro build artifacts
+dist/
+.astro/
+.vercel/
+
 # Sales contact data — never commit (PII)
 Unified list/
 Input lists/

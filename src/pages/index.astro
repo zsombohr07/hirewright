@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import SocialProof from '../components/SocialProof.astro';
+import TrackRecord from '../components/TrackRecord.astro';
+import RateCard from '../components/RateCard.astro';
+import CtaBand from '../components/CtaBand.astro';
+import WhyHirewright from '../components/WhyHirewright.astro';
+import About from '../components/About.astro';
+import RequestForm from '../components/RequestForm.astro';
+import QuickQuoteModal from '../components/QuickQuoteModal.astro';
+import Footer from '../components/Footer.astro';
+import { copy } from '../content/copy.en';
+import { SITE } from '../config';
+
+const org = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: SITE.name,
+  legalName: SITE.legalEntity,
+  url: SITE.url,
+  logo: `${SITE.url}/apple-touch-icon.png`,
+  image: `${SITE.url}/og-image.jpg`,
+  foundingDate: '2001',
+  description: copy.meta.description,
+  areaServed: { '@type': 'Country', name: 'Germany' },
+  knowsAbout: [
+    'Industrial staffing',
+    'Skilled trades recruitment',
+    'Welders',
+    'Electricians',
+    'Warehouse and logistics staffing',
+  ],
+};
+
+const services = copy.rateCard.rows.map((row) => ({
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  serviceType: row.category,
+  description: row.description,
+  provider: { '@type': 'Organization', name: SITE.name, url: SITE.url },
+  areaServed: { '@type': 'Country', name: 'Germany' },
+  offers: {
+    '@type': 'Offer',
+    priceSpecification: {
+      '@type': 'UnitPriceSpecification',
+      price: row.rate,
+      priceCurrency: 'EUR',
+      unitCode: 'HUR',
+      unitText: 'hour',
+    },
+  },
+}));
+
+const faq = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: copy.faq.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+
+const jsonLd = [org, ...services, faq];
+---
+
+<BaseLayout
+  title={copy.meta.title}
+  description={copy.meta.description}
+  path="/"
+  jsonLd={jsonLd}
+>
+  <Header />
+  <main id="main">
+    <Hero />
+    <SocialProof />
+    <TrackRecord />
+    <RateCard />
+    <CtaBand />
+    <WhyHirewright />
+    <About />
+    <RequestForm />
+  </main>
+  <Footer />
+  <QuickQuoteModal />
+</BaseLayout>

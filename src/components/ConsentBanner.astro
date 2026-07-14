@@ -1,0 +1,51 @@
+---
+// Cookie consent banner. Essential-only by default; non-essential scripts
+// (GTM, Meta Pixel) stay blocked until the visitor clicks Accept.
+---
+
+<div
+  id="consent-banner"
+  class="fixed inset-x-0 bottom-0 z-[90] hidden border-t-2 border-amber bg-navy text-paper"
+  role="dialog"
+  aria-live="polite"
+  aria-label="Cookie consent"
+>
+  <div class="shell flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between md:py-4">
+    <p class="max-w-2xl text-sm leading-relaxed text-paper/85">
+      We use essential cookies to run this site. With your consent we also use
+      analytics and marketing cookies (Google Tag Manager, Meta Pixel) to
+      measure and improve our campaigns. You can decline and still use the site.
+    </p>
+    <div class="flex shrink-0 flex-wrap gap-3">
+      <button type="button" data-consent="essential" class="btn-outline-invert">
+        Essential only
+      </button>
+      <button type="button" data-consent="grant" class="btn-amber">
+        Accept
+      </button>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    var banner = document.getElementById('consent-banner');
+    if (!banner) return;
+    var HW = window.HW || {};
+
+    if (!HW.consentChoiceMade || !HW.consentChoiceMade()) {
+      banner.classList.remove('hidden');
+    }
+
+    banner.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-consent]');
+      if (!t) return;
+      if (t.getAttribute('data-consent') === 'grant') {
+        HW.grant && HW.grant();
+      } else {
+        HW.essential && HW.essential();
+      }
+      banner.classList.add('hidden');
+    });
+  })();
+</script>

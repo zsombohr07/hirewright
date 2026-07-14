@@ -1,0 +1,145 @@
+@import './fonts.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy: #0a2540;
+    --ink: #0d0d0d;
+    --paper: #fafafa;
+    --amber: #f59e0b;
+    --slate: #6e6e73;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    /* Guard against any 1-2px rounding overflow. `clip` (not `hidden`) so it
+       does not create a scroll container that would break the sticky header. */
+    overflow-x: clip;
+    font-family:
+      'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
+  }
+
+  /* One consistent, visible keyboard focus ring across the whole site. */
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+  /* Don't show focus ring on mouse click, only keyboard. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background: var(--amber);
+    color: var(--navy);
+  }
+
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Page shell / consistent horizontal rhythm. */
+  .shell {
+    @apply mx-auto w-full max-w-shell px-5 sm:px-8;
+  }
+
+  /* Small-caps signage label that sits above a rule. */
+  .eyebrow {
+    @apply font-mono text-label uppercase tracking-caps text-slate;
+  }
+
+  /* Display type: the industrial signage register. */
+  .display {
+    @apply font-display font-bold uppercase tracking-display;
+  }
+
+  /* Hairline rule used throughout the spec-sheet treatment. */
+  .rule {
+    @apply border-0 border-t border-ink/15;
+  }
+  .rule-navy {
+    @apply border-0 border-t border-white/15;
+  }
+
+  /*
+   * The amber corner notch — a single cut corner on the navy plate.
+   * Applied to an element that also has a solid background.
+   */
+  .notch {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%);
+  }
+  .notch::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 22px;
+    height: 22px;
+    background: var(--amber);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  }
+
+  /* Primary CTA — amber signal. */
+  .btn-amber {
+    @apply inline-flex items-center justify-center gap-2 bg-amber px-6 py-3.5 font-mono text-sm font-medium uppercase tracking-caps text-navy transition-colors duration-150 hover:bg-ink hover:text-paper;
+  }
+  /* Secondary CTA on light — outline. */
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 border border-navy bg-transparent px-6 py-3.5 font-mono text-sm font-medium uppercase tracking-caps text-navy transition-colors duration-150 hover:bg-navy hover:text-paper;
+  }
+  /* Secondary CTA on navy — outline reversed. */
+  .btn-outline-invert {
+    @apply inline-flex items-center justify-center gap-2 border border-paper/40 bg-transparent px-6 py-3.5 font-mono text-sm font-medium uppercase tracking-caps text-paper transition-colors duration-150 hover:bg-amber hover:text-navy hover:border-amber;
+  }
+}
+
+@layer utilities {
+  /* Slow logo marquee. Paused on hover, halted for reduced motion. */
+  .marquee-track {
+    animation: marquee 38s linear infinite;
+  }
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation: none;
+      transform: none;
+    }
+  }
+}

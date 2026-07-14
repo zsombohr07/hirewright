@@ -1,0 +1,65 @@
+---
+import { copy } from '../content/copy.en';
+const { footer, contact } = copy;
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t-2 border-amber bg-navy text-paper">
+  <div class="shell py-16 md:py-20">
+    <div class="grid grid-cols-1 gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div>
+        <p class="display text-3xl leading-none text-paper md:text-4xl">{footer.tagline}</p>
+        <p class="mt-5 max-w-xs text-sm leading-relaxed text-paper/60">{footer.brandLine}</p>
+      </div>
+
+      <div>
+        <p class="eyebrow mb-5 text-paper/60">{footer.columns.services.heading}</p>
+        <ul class="space-y-3">
+          {
+            footer.columns.services.items.map((item) => (
+              <li>
+                <a href="#rate-card" class="text-sm text-paper/75 transition-colors hover:text-amber">
+                  {item}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div>
+        <p class="eyebrow mb-5 text-paper/60">{footer.columns.company.heading}</p>
+        <ul class="space-y-3">
+          {
+            footer.columns.company.items.map((item) => (
+              <li>
+                <a href={item.href} class="text-sm text-paper/75 transition-colors hover:text-amber">
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div>
+        <p class="eyebrow mb-5 text-paper/60">{footer.columns.contact.heading}</p>
+        <ul class="space-y-3 font-mono text-sm text-paper/75">
+          <li>{contact.email}</li>
+          <li>{contact.phone}</li>
+          <li class="leading-relaxed">{contact.address}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-14 flex flex-col gap-3 border-t border-white/12 pt-6 text-xs text-paper/65 sm:flex-row sm:items-center sm:justify-between">
+      <p class="font-mono">
+        &copy; Hirewright {year}. {footer.legal.copyright}
+      </p>
+      <div class="flex gap-5 font-mono uppercase tracking-caps">
+        <a href="/impressum" class="transition-colors hover:text-amber">{footer.legal.impressum}</a>
+        <a href="/datenschutz" class="transition-colors hover:text-amber">{footer.legal.privacy}</a>
+      </div>
+    </div>
+  </div>
+</footer>

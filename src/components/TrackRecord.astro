@@ -1,0 +1,78 @@
+---
+import { copy } from '../content/copy.en';
+const { trackRecord } = copy;
+
+const fmt = (n: number) => n.toLocaleString('en-US');
+---
+
+<section id="track-record" class="scroll-mt-16 bg-navy py-16 md:py-20" aria-label={trackRecord.label}>
+  <div class="shell">
+    <p class="eyebrow mb-10 flex items-center gap-3 text-paper/60">
+      <span class="h-px w-8 bg-amber" aria-hidden="true"></span>
+      {trackRecord.label}
+    </p>
+
+    <dl class="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-4" id="stats">
+      {
+        trackRecord.stats.map((stat) => (
+          <div class="border-t border-white/15 pt-5">
+            <dd class="font-mono text-stat font-medium leading-none text-paper [font-variant-numeric:tabular-nums]">
+              <span class="text-amber">{stat.prefix}</span><span
+                class="count"
+                data-count-to={stat.value}
+                data-count-final={fmt(stat.value)}
+              >{fmt(stat.value)}</span>
+            </dd>
+            <dt class="mt-4 font-mono text-xs uppercase tracking-caps text-paper/65">
+              {stat.label}
+            </dt>
+          </div>
+        ))
+      }
+    </dl>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    var band = document.getElementById('stats');
+    if (!band) return;
+    var els = band.querySelectorAll('.count');
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function format(n) {
+      return Math.round(n).toLocaleString('en-US');
+    }
+
+    function run() {
+      els.forEach(function (el) {
+        var target = parseInt(el.getAttribute('data-count-to'), 10);
+        var start = null;
+        var dur = 1400;
+        function step(ts) {
+          if (start === null) start = ts;
+          var p = Math.min((ts - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = format(target * eased);
+          if (p < 1) requestAnimationFrame(step);
+          else el.textContent = el.getAttribute('data-count-final');
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    if (reduced || !('IntersectionObserver' in window)) return; // final values already in DOM
+    var io = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            run();
+            io.disconnect();
+          }
+        });
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(band);
+  })();
+</script>

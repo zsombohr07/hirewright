@@ -1,12 +1,19 @@
 {
   "name": "hirewright-site",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Hirewright landing page — static site with an EN/DE build step.",
+  "type": "module",
+  "description": "Hirewright landing page — Astro static site, EN now, DE at /de later.",
   "scripts": {
-    "build:de": "node tools/build-de.js"
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
-  "devDependencies": {
-    "cheerio": "^1.2.0"
+  "dependencies": {
+    "@astrojs/tailwind": "^5.1.5",
+    "astro": "^4.16.18",
+    "tailwindcss": "^3.4.17"
   }
 }

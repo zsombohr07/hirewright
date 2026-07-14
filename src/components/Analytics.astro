@@ -1,0 +1,107 @@
+---
+// Consent-gated tracking. Nothing loads until the visitor grants consent.
+// One init only, in one place. Exposes window.HW for the consent banner and
+// window.hwTrackLead(eventId) for deduplicated Lead events.
+import { GTM_ID, META_PIXEL_ID } from '../config';
+---
+
+<script is:inline define:vars={{ GTM_ID, META_PIXEL_ID }}>
+  (function () {
+    var STORAGE_KEY = 'hw-consent';
+
+    var HW = (window.HW = window.HW || {});
+    HW.gtmId = GTM_ID;
+    HW.pixelId = META_PIXEL_ID;
+    HW.loaded = false;
+    HW.firedLeads = {};
+
+    function loadGTM(id) {
+      if (!id) return;
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        var f = d.getElementsByTagName(s)[0];
+        var j = d.createElement(s);
+        j.async = true;
+        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, 'script', 'dataLayer', id);
+    }
+
+    function loadPixel(id) {
+      if (!id) return;
+      if (window.fbq) return;
+      /* eslint-disable */
+      !(function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = !0;
+        n.version = '2.0';
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = !0;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+      /* eslint-enable */
+      window.fbq('init', id);
+      window.fbq('track', 'PageView');
+    }
+
+    HW.loadTracking = function () {
+      if (HW.loaded) return;
+      HW.loaded = true;
+      loadGTM(HW.gtmId);
+      loadPixel(HW.pixelId);
+    };
+
+    HW.hasConsent = function () {
+      try {
+        return localStorage.getItem(STORAGE_KEY) === 'granted';
+      } catch (e) {
+        return false;
+      }
+    };
+
+    HW.consentChoiceMade = function () {
+      try {
+        return localStorage.getItem(STORAGE_KEY) !== null;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    HW.grant = function () {
+      try {
+        localStorage.setItem(STORAGE_KEY, 'granted');
+      } catch (e) {}
+      HW.loadTracking();
+      document.dispatchEvent(new CustomEvent('hw:consent', { detail: 'granted' }));
+    };
+
+    HW.essential = function () {
+      try {
+        localStorage.setItem(STORAGE_KEY, 'essential');
+      } catch (e) {}
+      document.dispatchEvent(new CustomEvent('hw:consent', { detail: 'essential' }));
+    };
+
+    // Fire Lead once per submission, deduplicated against server-side CAPI via
+    // the same eventID that is also sent in the webhook payload.
+    window.hwTrackLead = function (eventId) {
+      if (!eventId || HW.firedLeads[eventId]) return;
+      HW.firedLeads[eventId] = true;
+      if (window.fbq) {
+        window.fbq('track', 'Lead', {}, { eventID: eventId });
+      }
+    };
+
+    // Auto-load if consent was granted in a previous visit.
+    if (HW.hasConsent()) HW.loadTracking();
+  })();
+</script>

@@ -1,0 +1,47 @@
+---
+// German landing page — scaffold only.
+// The full DE version is added here by mirroring copy.en.ts into copy.de.ts and
+// swapping the import in the section components. Structure is already in place,
+// so no refactor is needed. Kept noindex until the translation ships.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Footer from '../../components/Footer.astro';
+---
+
+<BaseLayout
+  title="Fachkräfte für die deutsche Industrie | Hirewright"
+  description="Hirewright vermittelt Fach- und Hilfskräfte aus Ungarn, Rumänien, Polen und der Slowakei an deutsche Industriestandorte. Die deutsche Seite folgt in Kürze."
+  path="/de/"
+  lang="de"
+  locale="de_DE"
+  noindex={true}
+>
+  <header class="border-b border-white/10 bg-navy">
+    <div class="shell flex h-16 items-center justify-between">
+      <a href="/de/" class="display text-xl leading-none text-paper">Hirewright</a>
+      <a href="/" class="font-mono text-xs uppercase tracking-caps text-paper/70 transition-colors hover:text-amber">
+        English
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="bg-navy text-paper">
+    <div class="shell flex min-h-[60vh] flex-col justify-center py-24">
+      <p class="eyebrow mb-6 flex items-center gap-3 text-amber">
+        <span class="h-2 w-2 bg-amber" aria-hidden="true"></span>
+        Industrievermittlung seit 2001
+      </p>
+      <h1 class="display max-w-3xl text-display-lg text-paper">
+        Fachkräfte für die deutsche Industrie, einsatzbereit in Tagen.
+      </h1>
+      <p class="mt-6 max-w-2xl text-lg leading-relaxed text-paper/80">
+        Die vollständige deutsche Seite folgt in Kürze. In der Zwischenzeit finden
+        Sie alle Informationen und das Anfrageformular auf unserer englischen Seite.
+      </p>
+      <div class="mt-10">
+        <a href="/#request" class="btn-amber">Zur englischen Seite</a>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</BaseLayout>

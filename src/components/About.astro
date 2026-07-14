@@ -1,0 +1,35 @@
+---
+import { copy } from '../content/copy.en';
+const { about } = copy;
+---
+
+<section id="about" class="scroll-mt-16 bg-navy py-20 text-paper md:py-28">
+  <div class="shell">
+    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
+      <div>
+        <p class="eyebrow mb-6 flex items-center gap-3 text-paper/60">
+          <span class="h-px w-8 bg-amber" aria-hidden="true"></span>
+          About
+        </p>
+        <h2 class="display text-display-md text-paper">{about.heading}</h2>
+      </div>
+      <div class="flex items-end">
+        <p class="text-lg leading-relaxed text-paper/80">{about.body}</p>
+      </div>
+    </div>
+
+    <div class="mt-16 border-t border-white/15">
+      <p class="eyebrow py-5 text-paper/60">{about.valuesLabel}</p>
+      <dl class="grid grid-cols-1 gap-px overflow-hidden border-t border-white/15 bg-white/15 sm:grid-cols-3">
+        {
+          about.values.map((v) => (
+            <div class="bg-navy p-6 md:p-8">
+              <dt class="display text-2xl text-amber">{v.claim}</dt>
+              <dd class="mt-3 text-base leading-relaxed text-paper/75">{v.support}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+  </div>
+</section>

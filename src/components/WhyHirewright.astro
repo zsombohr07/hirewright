@@ -1,0 +1,37 @@
+---
+import { copy } from '../content/copy.en';
+const { why } = copy;
+---
+
+<section id="why" class="scroll-mt-16 bg-paper py-20 md:py-28">
+  <div class="shell">
+    <p class="eyebrow mb-4 flex items-center gap-3">
+      <span class="h-px w-8 bg-amber" aria-hidden="true"></span>
+      {why.heading}
+    </p>
+    <h2 class="display mb-12 text-display-lg text-navy md:mb-16">{why.heading}</h2>
+
+    <div class="border-t border-ink/15">
+      {
+        why.points.map((point, i) => (
+          <div class="grid grid-cols-1 gap-2 border-b border-ink/15 py-7 md:grid-cols-[4rem_1fr] md:gap-8 md:py-8">
+            <span
+              class="font-mono text-sm text-slate [font-variant-numeric:tabular-nums] md:pt-1"
+              aria-hidden="true"
+            >
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <div class="grid grid-cols-1 gap-x-10 gap-y-2 md:grid-cols-[minmax(0,22rem)_1fr]">
+              <h3 class="display text-xl leading-tight text-navy md:text-2xl">
+                {point.claim}
+              </h3>
+              <p class="max-w-xl text-base leading-relaxed text-slate">
+                {point.support}
+              </p>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

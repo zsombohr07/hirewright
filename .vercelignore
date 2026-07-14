@@ -1,11 +1,39 @@
-# Build tooling — never deployed
-tools/
-node_modules/
-package.json
-package-lock.json
+# Vercel builds this repo with the Astro framework preset (astro build -> dist/).
+# package.json, astro.config.mjs, src/ and public/ MUST be uploaded, so they are
+# NOT ignored here. This file only excludes things the build never needs.
 
-# Source/working files not part of the live site
+# Sales / prospecting data — never deploy (PII)
+Unified list/
+Input lists/
+--Platforms--
+
+# Standalone CLI tooling — not part of the landing page
+stepstone_prospector/
+tools/
+
+# Legacy static site and working files
+index_legacy.html
 index_backup.html
+de/index.html
 hirewright_homepage_spec.txt
 *.textClipping
 .DS_Store
+
+# Root brand-source images now served from public/
+01_primary_lockup.png
+02_primary_lockup_reversed copy.png
+03_monogram_navy.png
+Skilled trades.jpg
+cleaner.jpg
+construction.jpg
+industrial-specialist.jpg
+logistics.jpg
+operators.jpg
+case_study_logos/
+
+# Legacy root SEO files — superseded by public/ versions
+robots.txt
+sitemap.xml
+og-image.jpg
+favicon-32.png
+apple-touch-icon.png

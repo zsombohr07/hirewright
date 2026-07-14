@@ -1,0 +1,14 @@
+---
+import { copy } from '../content/copy.en';
+const { ctaBand } = copy;
+---
+
+<section class="relative overflow-hidden border-y-2 border-amber bg-navy py-16 text-paper md:py-20">
+  <div class="shell flex flex-col items-start gap-8 lg:flex-row lg:items-center lg:justify-between">
+    <div class="max-w-2xl">
+      <h2 class="display text-display-md text-paper">{ctaBand.h2}</h2>
+      <p class="mt-4 text-lg leading-relaxed text-paper/80">{ctaBand.sub}</p>
+    </div>
+    <a href="#request" class="btn-amber shrink-0 px-8 py-4">{ctaBand.button}</a>
+  </div>
+</section>
