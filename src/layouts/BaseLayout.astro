@@ -22,13 +22,20 @@ const {
   path = '/',
   lang = 'en',
   locale = 'en_GB',
-  ogImage = '/og-image.jpg',
+  ogImage,
   jsonLd = [],
   noindex = false,
 } = Astro.props;
 
-const canonical = new URL(path, SITE.url).href;
-const ogImageAbs = new URL(ogImage, SITE.url).href;
+// The whole site is mounted at import.meta.env.BASE_URL (e.g. "/lander/").
+// Join it onto app-absolute paths so links and assets resolve under the base.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
+const withBase = (p: string) => base + p.replace(/^\//, '');
+
+const canonical = new URL(withBase(path === '/' ? '' : path), SITE.url).href;
+const homeHref = withBase('');
+const deHref = withBase('de/');
+const ogImageAbs = new URL(ogImage ?? withBase('og-image.jpg'), SITE.url).href;
 ---
 
 <!doctype html>
@@ -45,13 +52,13 @@ const ogImageAbs = new URL(ogImage, SITE.url).href;
     <meta name="author" content={`${SITE.name} — ${SITE.legalEntity}`} />
 
     <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href={withBase('/favicon-32.png')} />
+    <link rel="apple-touch-icon" href={withBase('/apple-touch-icon.png')} />
 
-    <!-- Language alternates (EN now, DE at /de later) -->
-    <link rel="alternate" hreflang="en" href={`${SITE.url}/`} />
-    <link rel="alternate" hreflang="de" href={`${SITE.url}/de/`} />
-    <link rel="alternate" hreflang="x-default" href={`${SITE.url}/`} />
+    <!-- Language alternates (EN now, DE at /lander/de later) -->
+    <link rel="alternate" hreflang="en" href={new URL(homeHref, SITE.url).href} />
+    <link rel="alternate" hreflang="de" href={new URL(deHref, SITE.url).href} />
+    <link rel="alternate" hreflang="x-default" href={new URL(homeHref, SITE.url).href} />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -73,14 +80,14 @@ const ogImageAbs = new URL(ogImage, SITE.url).href;
     <!-- Preload the two above-the-fold font files to avoid FOUT on the hero. -->
     <link
       rel="preload"
-      href="/fonts/archivo-condensed-600-700-latin.woff2"
+      href={withBase('/fonts/archivo-condensed-600-700-latin.woff2')}
       as="font"
       type="font/woff2"
       crossorigin
     />
     <link
       rel="preload"
-      href="/fonts/inter-400-500-600-latin.woff2"
+      href={withBase('/fonts/inter-400-500-600-latin.woff2')}
       as="font"
       type="font/woff2"
       crossorigin

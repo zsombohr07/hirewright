@@ -6,6 +6,7 @@ import tailwind from '@astrojs/tailwind';
 export default defineConfig({
   site: 'https://hirewright.eu',
   output: 'static',
+  base: '/lander',
   integrations: [
     tailwind({
       // We own the base layer inside src/styles/global.css (imported in BaseLayout),

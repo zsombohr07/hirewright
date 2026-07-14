@@ -1,11 +1,12 @@
 ---
 import { copy } from '../content/copy.en';
 const { nav } = copy;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
 ---
 
 <header class="sticky top-0 z-50 border-b border-white/10 bg-navy/95 backdrop-blur supports-[backdrop-filter]:bg-navy/85">
   <div class="shell flex h-16 items-center justify-between">
-    <a href="/" class="group flex items-baseline gap-2" aria-label="Hirewright home">
+    <a href={base} class="group flex items-baseline gap-2" aria-label="Hirewright home">
       <span class="display text-xl leading-none text-paper">Hirewright</span>
       <span class="hidden h-3 w-px bg-amber sm:block" aria-hidden="true"></span>
       <span class="hidden font-mono text-[0.625rem] uppercase tracking-caps text-paper/55 sm:block">

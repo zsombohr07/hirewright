@@ -3,6 +3,7 @@ node_modules/
 
 # Astro build artifacts
 dist/
+output/
 .astro/
 .vercel/
 

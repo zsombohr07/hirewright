@@ -2,6 +2,8 @@
 import { copy } from '../content/copy.en';
 const { footer, contact } = copy;
 const year = new Date().getFullYear();
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
+const withBase = (p: string) => base + p.replace(/^\//, '');
 ---
 
 <footer class="border-t-2 border-amber bg-navy text-paper">
@@ -57,8 +59,8 @@ const year = new Date().getFullYear();
         &copy; Hirewright {year}. {footer.legal.copyright}
       </p>
       <div class="flex gap-5 font-mono uppercase tracking-caps">
-        <a href="/impressum" class="transition-colors hover:text-amber">{footer.legal.impressum}</a>
-        <a href="/datenschutz" class="transition-colors hover:text-amber">{footer.legal.privacy}</a>
+        <a href={withBase('/impressum')} class="transition-colors hover:text-amber">{footer.legal.impressum}</a>
+        <a href={withBase('/datenschutz')} class="transition-colors hover:text-amber">{footer.legal.privacy}</a>
       </div>
     </div>
   </div>
