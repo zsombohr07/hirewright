@@ -51,7 +51,35 @@ export const copy = {
 
   socialProof: {
     eyebrow: 'Trusted on projects with',
-    items: ['BMW Group', 'Mercedes-Benz', 'NATO', 'Bremerhaven Shipyard', 'DPD'],
+    logos: [
+      { name: 'BMW Group', file: '/logos/bmw.png' },
+      { name: 'Mercedes-Benz', file: '/logos/mercedes.png' },
+      { name: 'NATO', file: '/logos/nato.png' },
+      { name: 'Bremerhaven Shipyard', file: '/logos/bremerhaven.png' },
+      { name: 'DPD', file: '/logos/dpd.png' },
+    ],
+  },
+
+  // Shared CTA labels. One button opens the request form popup, the other
+  // starts a phone call to contact.phone.
+  cta: {
+    request: 'Request workers',
+    call: 'Call us',
+  },
+
+  // GoHighLevel / LeadConnector embedded form.
+  ghl: {
+    formId: 'WcDEaoEKmKq0527BKqVW',
+    formSrc: 'https://api.leadconnectorhq.com/widget/form/WcDEaoEKmKq0527BKqVW',
+    embedScript: 'https://link.msgsndr.com/js/form_embed.js',
+    formName: 'Form 1',
+    height: 598,
+  },
+
+  formModal: {
+    heading: 'Request workers',
+    sub: 'Tell us the roles, the headcount, and the timeline. You get an indicative price today and a precise quote within 24 hours.',
+    close: 'Close',
   },
 
   trackRecord: {
@@ -124,32 +152,52 @@ export const copy = {
     button: 'Request workers',
   },
 
+  // Why Hirewright, rendered as a Without-us / With-us comparison table.
+  // NOTE: content supplied in Hungarian; the rest of the page is English.
   why: {
     heading: 'Why Hirewright',
-    points: [
+    withoutLabel: 'Nélkülünk',
+    withLabel: 'Velünk',
+    rows: [
       {
-        claim: 'You pay only for hours worked.',
-        support: 'No retainer, no upfront fee. The meter runs when the work does.',
+        without: 'Fix havi költség akkor is, ha nincs munka',
+        with: 'Csak a ténylegesen ledolgozott órák után számlázunk.',
       },
       {
-        claim: 'Rates are published, not negotiated.',
-        support:
-          'What you see is what you pay. Procurement doesn’t have to fight for a number.',
+        without: 'Folyamatos vita a túlórákról',
+        with: 'Munkavállalóink a magasabb keresetért érkeznek, ezért nyitottak a túlórára.',
       },
       {
-        claim: 'A four-country network moves fast.',
-        support:
-          'Hungary, Romania, Poland, Slovakia. When one pipeline is tight, another fills the gap, so crews mobilise in days, not months.',
+        without: 'Kommunikációs problémák a műhelyben',
+        with: 'Minden brigádban van legalább egy jól németül vagy angolul beszélő kapcsolattartó.',
       },
       {
-        claim: 'Full operational support is included.',
-        support:
-          'Housing, transport, paperwork, sick leave, integration. You manage the work. We handle everything around it.',
+        without: 'Előlegek, hóközi kifizetések kezelése a megrendelő feladata',
+        with: 'A teljes bérügyi adminisztrációt és az előlegek kezelését mi végezzük.',
       },
       {
-        claim: '25 years on the plant floor.',
-        support:
-          'Placements with BMW, Mercedes-Benz, NATO, and the Bremerhaven shipyard. We know what a German line demands.',
+        without: 'Szezonális létszám-ingadozás nehezen kezelhető',
+        with: 'Rugalmas létszámbővítés és létszámcsökkentés projektigény szerint.',
+      },
+      {
+        without: 'Magas bérköltség és HR-adminisztráció',
+        with: 'Egyszerű, átlátható szolgáltatási számla, kiszámítható költségtervezéssel.',
+      },
+      {
+        without: 'A vezetők idejét emberi konfliktusok emésztik fel',
+        with: 'Mi kezeljük a napi HR-problémákat, Ön a termelésre koncentrálhat.',
+      },
+      {
+        without: 'A termelés és a dolgozók között gyakoriak a félreértések',
+        with: 'Mi vagyunk a kapcsolat a tulajdonos, a termelésvezető és a munkavállalók között.',
+      },
+      {
+        without: 'Munkaerőhiány miatt csúsznak a projektek',
+        with: 'Gyors toborzás Magyarországról és Kelet-Európából, saját adatbázisból és aktív kereséssel.',
+      },
+      {
+        without: 'Egy új szolgáltató mindig kockázatot jelent',
+        with: 'Hosszú távú partnerség, folyamatos kapcsolattartás és utógondozás a teljes projekt alatt.',
       },
     ],
   },

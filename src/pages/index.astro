@@ -9,7 +9,7 @@ import CtaBand from '../components/CtaBand.astro';
 import WhyHirewright from '../components/WhyHirewright.astro';
 import About from '../components/About.astro';
 import RequestForm from '../components/RequestForm.astro';
-import QuickQuoteModal from '../components/QuickQuoteModal.astro';
+import FormModal from '../components/FormModal.astro';
 import Footer from '../components/Footer.astro';
 import { copy } from '../content/copy.en';
 import { SITE } from '../config';
@@ -84,5 +84,8 @@ const jsonLd = [org, ...services, faq];
     <RequestForm />
   </main>
   <Footer />
-  <QuickQuoteModal />
+  <FormModal />
+
+  <!-- GoHighLevel form embed script — loaded once, resizes all form iframes. -->
+  <script is:inline src={copy.ghl.embedScript} async></script>
 </BaseLayout>

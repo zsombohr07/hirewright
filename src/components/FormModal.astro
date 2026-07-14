@@ -1,0 +1,64 @@
+---
+// Popup containing the GoHighLevel request form. Opened by any [data-open-form]
+// trigger (hero and CTA-band buttons). Native <dialog> gives focus handling and
+// Escape-to-close for free.
+import FormEmbed from './FormEmbed.astro';
+import { copy } from '../content/copy.en';
+const { formModal } = copy;
+---
+
+<dialog
+  id="form-modal"
+  class="w-[min(94vw,34rem)] max-h-[92vh] overflow-hidden border-0 bg-transparent p-0 backdrop:bg-navy/70"
+>
+  <div class="notch relative flex max-h-[92vh] flex-col bg-paper">
+    <div class="flex items-start justify-between gap-4 border-b border-ink/15 px-6 pt-6">
+      <div class="pb-4">
+        <p class="eyebrow mb-2">{formModal.heading}</p>
+        <p class="text-sm leading-relaxed text-slate">{formModal.sub}</p>
+      </div>
+      <button
+        type="button"
+        data-close-form
+        class="-mr-1 -mt-1 shrink-0 p-2 text-slate hover:text-ink"
+        aria-label={formModal.close}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="5" y1="5" x2="19" y2="19"></line>
+          <line x1="19" y1="5" x2="5" y2="19"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <FormEmbed instanceId="popup" />
+    </div>
+  </div>
+</dialog>
+
+<script is:inline>
+  (function () {
+    var modal = document.getElementById('form-modal');
+    if (!modal || !modal.showModal) return;
+
+    function open() {
+      modal.showModal();
+    }
+    function close() {
+      modal.close();
+    }
+
+    document.querySelectorAll('[data-open-form]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        open();
+      });
+    });
+    modal.querySelectorAll('[data-close-form]').forEach(function (b) {
+      b.addEventListener('click', close);
+    });
+    // Click on the backdrop closes.
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+  })();
+</script>

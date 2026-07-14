@@ -1,0 +1,33 @@
+---
+// GoHighLevel / LeadConnector embedded form. Rendered both inline (in the
+// request section) and inside the popup modal, so the DOM id is namespaced
+// per instance to stay unique. Load form_embed.js once per page (see index).
+import { copy } from '../content/copy.en';
+const { ghl } = copy;
+
+export interface Props {
+  instanceId?: string;
+}
+const { instanceId = 'inline' } = Astro.props;
+const domId = `${instanceId}-${ghl.formId}`;
+---
+
+<iframe
+  src={ghl.formSrc}
+  style="width:100%;border:none;border-radius:0;display:block"
+  id={domId}
+  data-layout="{'id':'INLINE'}"
+  data-trigger-type="alwaysShow"
+  data-trigger-value=""
+  data-activation-type="alwaysActivated"
+  data-activation-value=""
+  data-deactivation-type="neverDeactivate"
+  data-deactivation-value=""
+  data-form-name={ghl.formName}
+  data-height={String(ghl.height)}
+  data-layout-iframe-id={domId}
+  data-form-id={ghl.formId}
+  title={ghl.formName}
+  height={ghl.height}
+>
+</iframe>

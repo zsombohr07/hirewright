@@ -1,19 +1,28 @@
 ---
 import { copy } from '../content/copy.en';
 const { socialProof } = copy;
-const items = socialProof.items;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '') + '/';
+const withBase = (p: string) => base + p.replace(/^\//, '');
+const logos = socialProof.logos;
 ---
 
-<section class="border-y border-white/10 bg-navy py-8" aria-label={socialProof.eyebrow}>
+<section class="border-y border-ink/10 bg-white py-10" aria-label={socialProof.eyebrow}>
   <div class="shell">
-    <p class="eyebrow mb-5 text-paper/60">{socialProof.eyebrow}</p>
+    <p class="eyebrow mb-6 text-slate">{socialProof.eyebrow}</p>
   </div>
 
-  <!-- Static, wrapped list on small screens. -->
-  <div class="shell flex flex-wrap items-center gap-x-6 gap-y-3 md:hidden">
+  <!-- Static, wrapped grid on small screens. -->
+  <div class="shell flex flex-wrap items-center gap-x-10 gap-y-6 md:hidden">
     {
-      items.map((item) => (
-        <span class="display text-lg text-paper/80">{item}</span>
+      logos.map((logo) => (
+        <img
+          src={withBase(logo.file)}
+          alt={logo.name}
+          width="284"
+          height="160"
+          loading="lazy"
+          class="h-12 w-auto object-contain"
+        />
       ))
     }
   </div>
@@ -24,11 +33,15 @@ const items = socialProof.items;
       {
         [0, 1].map((seq) => (
           <div class="flex items-center" aria-hidden={seq === 1 ? 'true' : undefined}>
-            {items.map((item) => (
-              <span class="flex items-center">
-                <span class="display px-8 text-2xl text-paper/80">{item}</span>
-                <span class="h-1.5 w-1.5 shrink-0 bg-amber" aria-hidden="true" />
-              </span>
+            {logos.map((logo) => (
+              <img
+                src={withBase(logo.file)}
+                alt={seq === 1 ? '' : logo.name}
+                width="284"
+                height="160"
+                loading="lazy"
+                class="mx-10 h-14 w-auto object-contain"
+              />
             ))}
           </div>
         ))

@@ -9,29 +9,41 @@ const { why } = copy;
       <span class="h-px w-8 bg-amber" aria-hidden="true"></span>
       {why.heading}
     </p>
-    <h2 class="display mb-12 text-display-lg text-navy md:mb-16">{why.heading}</h2>
+    <h2 class="display mb-12 text-display-lg text-navy md:mb-14">{why.heading}</h2>
 
     <div class="border-t border-ink/15">
-      {
-        why.points.map((point, i) => (
-          <div class="grid grid-cols-1 gap-2 border-b border-ink/15 py-7 md:grid-cols-[4rem_1fr] md:gap-8 md:py-8">
-            <span
-              class="font-mono text-sm text-slate [font-variant-numeric:tabular-nums] md:pt-1"
-              aria-hidden="true"
-            >
-              {String(i + 1).padStart(2, '0')}
-            </span>
-            <div class="grid grid-cols-1 gap-x-10 gap-y-2 md:grid-cols-[minmax(0,22rem)_1fr]">
-              <h3 class="display text-xl leading-tight text-navy md:text-2xl">
-                {point.claim}
-              </h3>
-              <p class="max-w-xl text-base leading-relaxed text-slate">
-                {point.support}
-              </p>
-            </div>
-          </div>
-        ))
-      }
+      <!-- Column headers (desktop). -->
+      <div class="hidden grid-cols-2 md:grid">
+        <div class="flex items-center gap-3 py-4 pr-6">
+          <span class="display text-lg text-slate">{why.withoutLabel}</span>
+        </div>
+        <div class="flex items-center gap-3 border-l border-ink/15 py-4 pl-6 lg:pl-10">
+          <span class="display text-lg text-navy">{why.withLabel}</span>
+          <span class="h-2 w-2 bg-amber" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2">
+        {
+          why.rows.map((row) => (
+            <>
+              <div class="flex items-start gap-3 border-t border-ink/15 py-5 pr-6 md:py-6">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-ink/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                </svg>
+                <span class="text-sm leading-relaxed text-slate md:text-base">{row.without}</span>
+              </div>
+              <div class="flex items-start gap-3 border-t border-ink/15 py-5 md:border-l md:py-6 md:pl-6 lg:pl-10">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span class="text-sm font-medium leading-relaxed text-ink md:text-base">{row.with}</span>
+              </div>
+            </>
+          ))
+        }
+      </div>
     </div>
   </div>
 </section>
