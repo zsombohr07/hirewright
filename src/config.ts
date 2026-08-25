@@ -13,7 +13,9 @@ export const SITE = {
 export const WEBHOOK_URL: string = import.meta.env.PUBLIC_WEBHOOK_URL ?? '';
 
 // Meta Pixel id. Empty => pixel is not loaded at all.
-export const META_PIXEL_ID: string = import.meta.env.PUBLIC_META_PIXEL_ID ?? '';
+// Defaults to the live Hirewright pixel; PUBLIC_META_PIXEL_ID overrides it.
+export const META_PIXEL_ID: string =
+  import.meta.env.PUBLIC_META_PIXEL_ID ?? '1996573021059495';
 
 // Google Tag Manager container id, e.g. GTM-XXXXXX. Empty => GTM not loaded.
 export const GTM_ID: string = import.meta.env.PUBLIC_GTM_ID ?? '';
