@@ -19,3 +19,8 @@ export const META_PIXEL_ID: string =
 
 // Google Tag Manager container id, e.g. GTM-XXXXXX. Empty => GTM not loaded.
 export const GTM_ID: string = import.meta.env.PUBLIC_GTM_ID ?? '';
+
+// Microsoft Clarity project id. Empty => Clarity is not loaded at all.
+// Defaults to the live Hirewright project; PUBLIC_CLARITY_ID overrides it.
+export const CLARITY_ID: string =
+  import.meta.env.PUBLIC_CLARITY_ID ?? 'yavd33lik0';
