@@ -2,7 +2,7 @@
 //
 //   output/            -> served at https://hirewright.eu/
 //     index.html       = legacy homepage (index_legacy.html)
-//     <legacy assets>  = images, logos, favicons, robots, sitemap, /de
+//     <legacy assets>  = images, logos, favicons, robots, sitemap, /de, /hu
 //     lander/          = the Astro build (built with base: '/lander')
 //
 // The Astro build in dist/ references everything under /lander/..., so the
@@ -31,7 +31,7 @@ cpSync(DIST, join(OUT, 'lander'), { recursive: true });
 // 2) Legacy homepage -> output/index.html
 copyFileSync(join(ROOT, 'index_legacy.html'), join(OUT, 'index.html'));
 
-// 3) Legacy root assets referenced by the homepage + its /de page.
+// 3) Legacy root assets referenced by the homepage + its translated pages.
 const files = [
   '01_primary_lockup.png',
   '02_primary_lockup_reversed copy.png',
@@ -48,7 +48,7 @@ const files = [
   'robots.txt',
   'sitemap.xml',
 ];
-const dirs = ['case_study_logos', 'de'];
+const dirs = ['case_study_logos', 'de', 'hu'];
 
 let copied = 0;
 for (const f of files) {

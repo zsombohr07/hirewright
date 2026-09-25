@@ -3,17 +3,21 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Hirewright landing page — Astro static site, EN now, DE at /de later.",
+  "description": "Hirewright website — EN, DE and HU homepages with an Astro landing page at /lander.",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build && node assemble.mjs",
+    "build": "npm run build:locales && astro build && node assemble.mjs",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "build:locales": "node tools/build-locales.mjs"
   },
   "dependencies": {
     "@astrojs/tailwind": "^5.1.5",
     "astro": "^4.16.18",
     "tailwindcss": "^3.4.17"
+  },
+  "devDependencies": {
+    "parse5": "^7.3.0"
   }
 }

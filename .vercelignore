@@ -1,5 +1,5 @@
 # Vercel builds this repo with a custom command (see vercel.json):
-#   npm run build  ->  astro build && node assemble.mjs  ->  output/
+#   npm run build  ->  build:locales && astro build && node assemble.mjs  ->  output/
 # The assemble step needs the legacy homepage AND its root assets present in
 # the build environment, so those are NOT ignored here.
 
@@ -15,7 +15,7 @@ Input lists/
 
 # Standalone CLI tooling — not part of the site
 stepstone_prospector/
-tools/
+# Keep locale generators available during the Vercel build.
 
 # Working files / junk
 index_backup.html
